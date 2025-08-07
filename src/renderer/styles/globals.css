@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ゲーム専用スタイル */
+@layer base {
+  html, body {
+    @apply h-full font-game text-game-text bg-game-bg;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .game-button {
+    @apply px-6 py-3 text-lg font-bold rounded-lg transition-all duration-200;
+    @apply bg-blue-500 hover:bg-blue-600 active:bg-blue-700;
+    @apply border-2 border-blue-400 hover:border-blue-300;
+    @apply shadow-lg hover:shadow-xl active:shadow-md;
+    @apply transform hover:scale-105 active:scale-95;
+  }
+  
+  .nickname-button {
+    @apply px-4 py-2 m-1 rounded-md font-medium transition-all duration-150;
+    @apply border-2 text-sm;
+  }
+  
+  .nickname-button--selected {
+    @apply bg-red-600 border-red-500 text-white;
+    @apply shadow-inner transform scale-95;
+  }
+  
+  .nickname-button--unselected {
+    @apply bg-blue-200 border-blue-300 text-blue-800 hover:bg-blue-300;
+    @apply shadow-md hover:shadow-lg transform hover:scale-105;
+  }
+  
+  .screen-container {
+    @apply w-full h-screen flex flex-col items-center justify-center;
+    @apply p-8 text-center;
+  }
+  
+  .game-title {
+    @apply text-4xl md:text-6xl font-bold mb-8;
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600;
+  }
+  
+  .camera-layout {
+    @apply flex w-full h-screen;
+  }
+  
+  .camera-nicknames {
+    @apply w-7/10 p-6 flex flex-wrap content-start;
+  }
+  
+  .camera-preview {
+    @apply w-3/10 p-6 flex flex-col items-center justify-center;
+  }
+  
+  .video-container {
+    @apply relative bg-gray-800 rounded-lg overflow-hidden;
+    @apply border-2 border-gray-600;
+  }
+  
+  .countdown-text {
+    @apply text-8xl md:text-9xl font-bold;
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-500;
+    @apply animate-pulse;
+  }
+  
+  .result-card {
+    @apply bg-gray-800 rounded-xl p-8 shadow-2xl border border-gray-600;
+    @apply max-w-md mx-auto;
+  }
+  
+  .score-display {
+    @apply text-3xl font-bold text-game-accent mb-4;
+  }
+  
+  .level-display {
+    @apply text-xl text-blue-400 mb-2;
+  }
+  
+  .rank-display {
+    @apply text-2xl font-bold text-yellow-400 mb-4;
+  }
+}
+
+@layer utilities {
+  .w-7\/10 {
+    width: 70%;
+  }
+  
+  .w-3\/10 {
+    width: 30%;
+  }
+}
+
+/* PixiJSキャンバス用スタイル */
+canvas {
+  display: block;
+  margin: 0 auto;
+}
