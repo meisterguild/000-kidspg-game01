@@ -8,11 +8,12 @@ import CameraPage from './pages/CameraPage';
 import CountdownPage from './pages/CountdownPage';
 import GamePage from './pages/GamePage';
 import ResultPage from './pages/ResultPage';
+import { TestPage } from './test/TestPage';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<GameScreen>('TOP');
   const [capturedImage, setCapturedImage] = useState<string>('');
-  const [selectedNickname, setSelectedNickname] = useState<string>('ランダム');
+  const [selectedNickname, setSelectedNickname] = useState<string>('');
   const [gameScore, setGameScore] = useState<number>(0);
   const [assetsLoaded, setAssetsLoaded] = useState<boolean>(false);
 
@@ -26,7 +27,7 @@ const App: React.FC = () => {
     setCapturedImage(imageData);
   }, []);
 
-  // 二つ名選択を保存
+  // ニックネーム選択を保存
   const handleNicknameSelect = useCallback((nickname: string) => {
     setSelectedNickname(nickname);
   }, []);
@@ -56,21 +57,23 @@ const App: React.FC = () => {
     initializeAssets();
   }, []);
 
-  // ESCキーでトップ画面に戻る
+  // ESCキーでトップ画面に戻る、Tキーでテスト画面へ
   React.useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         playSound('paltu');
         setCurrentScreen('TOP');
         // 状態をリセット
         setCapturedImage('');
-        setSelectedNickname('ランダム');
+        setSelectedNickname('');
         setGameScore(0);
+      } else if (event.key === 't' || event.key === 'T') {
+        setCurrentScreen('TEST');
       }
     };
 
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // 現在の画面に応じたコンポーネントをレンダリング
@@ -126,9 +129,18 @@ const App: React.FC = () => {
             score={gameScore}
             nickname={selectedNickname}
             capturedImage={capturedImage}
-            onRestart={() => handleScreenTransition('TOP')}
+            onRestart={() => {
+              // 状態をリセット
+              setCapturedImage('');
+              setSelectedNickname('');
+              setGameScore(0);
+              handleScreenTransition('TOP');
+            }}
           />
         );
+      
+      case 'TEST':
+        return <TestPage />;
       
       default:
         return <TopPage onStart={() => handleScreenTransition('CAMERA')} />;

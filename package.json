@@ -74,6 +74,8 @@
     },
     "files": [
       "dist/**/*",
+      "dist/renderer/assets/**/*",
+      "public/**/*",
       "node_modules/**/*",
       "package.json"
     ],
@@ -93,15 +95,13 @@
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         }
       ]

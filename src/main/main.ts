@@ -39,7 +39,7 @@ class ElectronApp {
         contextIsolation: true,
         preload: path.join(__dirname, 'preload.js')
       },
-      icon: path.join(__dirname, '../../assets/icon.png'),
+      icon: path.join(__dirname, '../../../assets/icon.png'),
       title: 'KidsPG - よけまくり中'
     });
 
@@ -48,7 +48,7 @@ class ElectronApp {
       this.mainWindow.loadURL('http://localhost:3000');
       this.mainWindow.webContents.openDevTools();
     } else {
-      this.mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+      this.mainWindow.loadFile(path.join(__dirname, '../../renderer/index.html'));
     }
 
     this.mainWindow.on('closed', () => {
@@ -74,7 +74,7 @@ class ElectronApp {
     });
 
     // ランキングHTMLファイルを読み込み
-    const rankingPath = path.join(process.cwd(), 'public', 'index.html');
+    const rankingPath = path.join(process.cwd(), 'ranking.html');
     this.rankingWindow.loadFile(rankingPath).catch(() => {
       // ファイルが存在しない場合はプレースホルダーを表示
       this.rankingWindow?.loadURL('data:text/html,<h1>ランキング準備中...</h1>');

@@ -1,5 +1,5 @@
 // ゲーム画面状態の型定義
-export type GameScreen = 'TOP' | 'CAMERA' | 'COUNTDOWN' | 'GAME' | 'RESULT';
+export type GameScreen = 'TOP' | 'CAMERA' | 'COUNTDOWN' | 'GAME' | 'RESULT' | 'TEST';
 
 // プレイ結果データの型定義
 export interface GameResult {
@@ -26,7 +26,7 @@ export interface CameraCapture {
   timestamp: number;
 }
 
-// 二つ名選択の型定義
+// ニックネーム選択の型定義
 export interface NicknameOption {
   id: string;
   text: string;

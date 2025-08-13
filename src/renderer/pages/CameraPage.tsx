@@ -103,12 +103,20 @@ const CameraPage: React.FC<CameraPageProps> = ({
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [isPhotoTaken, capturedImage, onConfirm, capturePhoto]);
 
-  // ランダム二つ名選択
+  // ランダムニックネーム選択
   const getRandomNickname = useCallback(() => {
     const nonRandomOptions = NICKNAME_OPTIONS.filter(opt => opt.id !== 'random');
     const randomOption = nonRandomOptions[Math.floor(Math.random() * nonRandomOptions.length)];
     return randomOption.text;
   }, []);
+
+  // 初期状態でランダムニックネームを設定
+  useEffect(() => {
+    if (!selectedNickname || selectedNickname === 'ランダム') {
+      const initialNickname = getRandomNickname();
+      onNicknameSelect(initialNickname);
+    }
+  }, [selectedNickname, onNicknameSelect, getRandomNickname]);
 
   const handleNicknameClick = useCallback((nickname: string) => {
     playSound('buttonClick');
@@ -119,16 +127,17 @@ const CameraPage: React.FC<CameraPageProps> = ({
   return (
     <div className="camera-layout">
       <div className="camera-nicknames">
-        <h2 className="text-2xl font-bold mb-4">二つ名を選択してください</h2>
+        <h2 className="text-2xl font-bold mb-4">ニックネームを選択してください</h2>
         <div className="flex flex-wrap">
           {NICKNAME_OPTIONS.map((option) => (
             <button
               key={option.id}
               className={`nickname-button ${
-                selectedNickname === option.text || 
-                (option.text === 'ランダム' && selectedNickname === 'ランダム')
+                selectedNickname === option.text
                   ? 'nickname-button--selected' 
                   : 'nickname-button--unselected'
+              } ${
+                option.id === 'random' ? 'is-random' : ''
               }`}
               onClick={() => handleNicknameClick(option.text)}
             >

@@ -28,7 +28,7 @@ const TopPage: React.FC<TopPageProps> = ({ onStart }) => {
       
       <div className="text-center space-y-8">
         <p className="text-xl md:text-2xl text-gray-300">
-          子ども向けチャレンジゲーム
+          障害物をよけるチャレンジゲーム
         </p>
         
         <div className="space-y-4">
@@ -38,7 +38,7 @@ const TopPage: React.FC<TopPageProps> = ({ onStart }) => {
           <div className="text-base text-gray-500 space-y-2">
             <p>← / → : 左右移動</p>
             <p>Space : スタート・進行・撮影確定</p>
-            <p>Esc : いつでもトップに戻る</p>
+            <p>Esc   : いつでもトップに戻る</p>
           </div>
         </div>
         

@@ -7,21 +7,21 @@ export interface AssetManager {
 
 // 音声ファイルの定義
 export const SOUND_ASSETS = {
-  action: './assets/sounds/action.mp3',
-  bell: './assets/sounds/bell.mp3',
-  buttonClick: './assets/sounds/button_click.mp3',
-  jump: './assets/sounds/jump.mp3',
-  machine: './assets/sounds/machine.mp3',
-  newtype: './assets/sounds/newtype.mp3',
-  ng: './assets/sounds/ng.mp3',
-  paltu: './assets/sounds/paltu.mp3',
-  screenChange: './assets/sounds/screen_change.mp3',
-  sound7: './assets/sounds/sound7.mp3'
+  action: new URL('../../renderer/assets/sounds/action.mp3', import.meta.url).href,
+  bell: new URL('../../renderer/assets/sounds/bell.mp3', import.meta.url).href,
+  buttonClick: new URL('../../renderer/assets/sounds/button_click.mp3', import.meta.url).href,
+  jump: new URL('../../renderer/assets/sounds/jump.mp3', import.meta.url).href,
+  machine: new URL('../../renderer/assets/sounds/machine.mp3', import.meta.url).href,
+  newtype: new URL('../../renderer/assets/sounds/newtype.mp3', import.meta.url).href,
+  ng: new URL('../../renderer/assets/sounds/ng.mp3', import.meta.url).href,
+  paltu: new URL('../../renderer/assets/sounds/paltu.mp3', import.meta.url).href,
+  screenChange: new URL('../../renderer/assets/sounds/screen_change.mp3', import.meta.url).href,
+  sound7: new URL('../../renderer/assets/sounds/sound7.mp3', import.meta.url).href
 } as const;
 
 // 画像ファイルの定義
 export const IMAGE_ASSETS = {
-  spriteItems: './assets/images/sprite_items.png'
+  spriteItems: new URL('../../renderer/assets/images/sprite_items.png', import.meta.url).href
 } as const;
 
 // グローバルアセットマネージャー

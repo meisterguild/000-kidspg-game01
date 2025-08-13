@@ -163,7 +163,7 @@ const GamePage: React.FC<GamePageProps> = ({ onGameEnd }) => {
       </div>
 
       <div className="mt-4 text-gray-400 text-center max-w-md">
-        <p>上から落ちてくる赤い障害物を避けながら、できるだけ長くゲームを続けよう！</p>
+        <p>上から落ちてくる赤い障害物を避けよう！</p>
       </div>
     </div>
   );

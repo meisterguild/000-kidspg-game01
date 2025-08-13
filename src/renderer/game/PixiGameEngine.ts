@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { GAME_CONFIG, GAME_CANVAS } from '@shared/utils/constants';
 import { playSound } from '@shared/utils/assets';
+import spriteSheetUrl from '../assets/images/sprite_items.png';
 
 interface GameState {
   score: number;
@@ -10,14 +11,36 @@ interface GameState {
 }
 
 interface Obstacle {
-  sprite: PIXI.Graphics;
+  sprite: PIXI.Sprite;
   lane: number;
 }
+
+// スプライトシート設定
+const SPRITE_COLS = 7;
+const SPRITE_ROWS = 11;
+const PADDING_TOP = 13;
+const PADDING_LEFT = 16;
+const PADDING_RIGHT = 10;
+const PADDING_BOTTOM = 10;
+const USABLE_WIDTH = 1024 - PADDING_LEFT - PADDING_RIGHT;
+const USABLE_HEIGHT = 1536 - PADDING_TOP - PADDING_BOTTOM;
+const SPRITE_WIDTH = Math.floor(USABLE_WIDTH / SPRITE_COLS) - 2;
+const SPRITE_HEIGHT = Math.floor(USABLE_HEIGHT / SPRITE_ROWS) - 0;
+
+// スプライト座標計算
+const getSpriteX = (col: number) => PADDING_LEFT + col * SPRITE_WIDTH;
+const getSpriteY = (row: number) => PADDING_TOP + row * SPRITE_HEIGHT;
+
+// プレイヤー用スプライト座標
+const PLAYER_SPRITE = { x: getSpriteX(1), y: getSpriteY(4) };
+// 敵用スプライト座標
+const ENEMY_SPRITE = { x: getSpriteX(0), y: getSpriteY(3) };
 
 export class PixiGameEngine {
   private app: PIXI.Application;
   private gameState: GameState;
-  private character: PIXI.Graphics;
+  private character: PIXI.Sprite;
+  private spriteTexture: PIXI.Texture | null = null;
   private obstacles: Obstacle[] = [];
   private scoreText: PIXI.Text;
   private levelText: PIXI.Text;
@@ -62,6 +85,9 @@ export class PixiGameEngine {
       
       container.appendChild(this.app.canvas);
       
+      // スプライトシートを読み込み
+      this.spriteTexture = await PIXI.Assets.load(spriteSheetUrl);
+      
       // DOM更新を待つ
       await new Promise(resolve => requestAnimationFrame(resolve));
       
@@ -99,10 +125,24 @@ export class PixiGameEngine {
       this.levelText.position.set(20, 50);
       this.app.stage.addChild(this.levelText);
 
-      // プレイヤーキャラクター
-      this.character = new PIXI.Graphics()
-        .rect(-25, -25, 50, 50)
-        .fill(0x00FF00);
+      // プレイヤーキャラクター（スプライト使用）
+      if (this.spriteTexture) {
+        const playerRect = new PIXI.Rectangle(PLAYER_SPRITE.x, PLAYER_SPRITE.y, SPRITE_WIDTH, SPRITE_HEIGHT);
+        const playerTexture = new PIXI.Texture({ source: this.spriteTexture.source, frame: playerRect });
+        this.character = new PIXI.Sprite(playerTexture);
+        this.character.anchor.set(0.5, 0.5);
+        
+        // サイズ調整（50x50に統一）
+        this.character.width = 50;
+        this.character.height = 50;
+      } else {
+        // フォールバック: 元の緑四角
+        const graphics = new PIXI.Graphics()
+          .rect(-25, -25, 50, 50)
+          .fill(0x00FF00);
+        this.character = new PIXI.Sprite();
+        this.character.addChild(graphics);
+      }
       
       this.character.x = GAME_CANVAS.width / 2 + GAME_CONFIG.lanes[this.gameState.currentLane] * GAME_CONFIG.laneWidth;
       this.character.y = GAME_CANVAS.height - 100;
@@ -159,9 +199,26 @@ export class PixiGameEngine {
   private createObstacle(): void {
     if (this.gameState.gameOver || this.isDestroyed) return;
 
-    const obstacle = new PIXI.Graphics()
-      .rect(-25, -25, 50, 50)
-      .fill(0xFF0000);
+    let obstacle: PIXI.Sprite;
+    
+    // 敵キャラクター（スプライト使用）
+    if (this.spriteTexture) {
+      const enemyRect = new PIXI.Rectangle(ENEMY_SPRITE.x, ENEMY_SPRITE.y, SPRITE_WIDTH, SPRITE_HEIGHT);
+      const enemyTexture = new PIXI.Texture({ source: this.spriteTexture.source, frame: enemyRect });
+      obstacle = new PIXI.Sprite(enemyTexture);
+      obstacle.anchor.set(0.5, 0.5);
+      
+      // サイズ調整（50x50に統一）
+      obstacle.width = 50;
+      obstacle.height = 50;
+    } else {
+      // フォールバック: 元の赤四角
+      const graphics = new PIXI.Graphics()
+        .rect(-25, -25, 50, 50)
+        .fill(0xFF0000);
+      obstacle = new PIXI.Sprite();
+      obstacle.addChild(graphics);
+    }
     
     const laneIndex = Math.floor(Math.random() * 3); // 0, 1, 2
     const lane = GAME_CONFIG.lanes[laneIndex];

@@ -44,7 +44,7 @@ const CountdownPage: React.FC<CountdownPageProps> = ({ onCountdownEnd }) => {
           ← → キーで左右移動
         </p>
         <p className="text-lg text-gray-400">
-          上から落ちる障害物を避けよう！
+          上から落ちてくる赤い障害物を避けよう！
         </p>
       </div>
     </div>

@@ -40,6 +40,20 @@
     @apply shadow-md hover:shadow-lg transform hover:scale-105;
   }
   
+  /* ランダムボタン専用スタイル */
+  .nickname-button.is-random {
+    @apply bg-green-600 text-white;
+  }
+
+  .nickname-button.is-random:hover {
+    @apply bg-green-700;
+  }
+
+  /* 選択時のスタイルが上書きされるように調整 */
+  .nickname-button.is-random.nickname-button--selected {
+    @apply bg-green-500 ring-green-400;
+  }
+  
   .screen-container {
     @apply w-full h-screen flex flex-col items-center justify-center;
     @apply p-8 text-center;
@@ -47,7 +61,8 @@
   
   .game-title {
     @apply text-4xl md:text-6xl font-bold mb-8;
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600;
+    /* @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600;*/
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-mg-brand-300 to-mg-brand-500;
   }
   
   .camera-layout {

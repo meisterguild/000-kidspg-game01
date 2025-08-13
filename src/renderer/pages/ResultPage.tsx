@@ -73,7 +73,9 @@ const ResultPage: React.FC<ResultPageProps> = ({
     };
 
     performSave();
+  }, [score, nickname, capturedImage, isSaving]);
 
+  useEffect(() => {
     const countdown = setInterval(() => {
       setAutoRestartTimer(prev => {
         if (prev <= 1) {
@@ -86,7 +88,7 @@ const ResultPage: React.FC<ResultPageProps> = ({
     }, 1000);
 
     return () => clearInterval(countdown);
-  }, [score, nickname, capturedImage, onRestart, isSaving]);
+  }, [onRestart]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -116,7 +118,7 @@ const ResultPage: React.FC<ResultPageProps> = ({
         <h2 className="text-2xl font-bold text-center mb-4 text-yellow-400">{nickname}</h2>
         <div className="score-display text-center">スコア: {score.toLocaleString()}</div>
         <div className="level-display text-center">レベル: {level}</div>
-        <div className="rank-display text-center">階級: {rank}</div>
+        <div className="rank-display text-center">ランク: {rank}</div>
         {isSaving && (
           <div className="text-center text-blue-400 mt-4">記録を保存中...</div>
         )}
