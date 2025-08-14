@@ -2,31 +2,29 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { NICKNAME_OPTIONS, CAMERA_CONFIG } from '@shared/utils/constants';
 import { resizeToSquare } from '@shared/utils/dom-helpers';
 import { playSound } from '../utils/assets';
+import { useScreen } from '../contexts/ScreenContext';
+import { useGameSession } from '../contexts/GameSessionContext';
+import { useSavePhoto } from '../hooks/useSavePhoto';
 
-interface CameraPageProps {
-  onImageCapture: (imageData: string) => void;
-  onNicknameSelect: (nickname: string) => void;
-  selectedNickname: string;
-  onConfirm: () => void;
-  capturedImage: string;
-  setResultDir: (dir: string) => void;
-}
+const CameraPage: React.FC = () => {
+  const { setCurrentScreen } = useScreen();
+  const {
+    capturedImage,
+    setCapturedImage,
+    selectedNickname,
+    setSelectedNickname,
+    setResultDir,
+  } = useGameSession();
 
-const CameraPage: React.FC<CameraPageProps> = ({
-  onImageCapture,
-  onNicknameSelect,
-  selectedNickname,
-  onConfirm,
-  capturedImage,
-  setResultDir,
-}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [isPhotoTaken, setIsPhotoTaken] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // 保存中フラグ
+  const [isPhotoTaken, setIsPhotoTaken] = useState(!!capturedImage);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const { savePhoto, isSaving: isSavingHook, error: saveError } = useSavePhoto();
 
   const startCamera = useCallback(async () => {
+    setIsCameraReady(false);
     try {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -42,6 +40,9 @@ const CameraPage: React.FC<CameraPageProps> = ({
       streamRef.current = mediaStream;
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        videoRef.current.onloadeddata = () => {
+          setIsCameraReady(true);
+        };
       }
     } catch (error) {
       console.error('カメラアクセスエラー:', error);
@@ -75,15 +76,14 @@ const CameraPage: React.FC<CameraPageProps> = ({
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      startCamera();
-    }, 500);
-    
-    return () => {
-      clearTimeout(timer);
-      stopCamera();
-    };
-  }, [startCamera, stopCamera]);
+    if (!isPhotoTaken) {
+      const timer = setTimeout(() => {
+        startCamera();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+    return () => stopCamera();
+  }, [isPhotoTaken, startCamera, stopCamera]);
 
   const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current || !streamRef.current) return;
@@ -105,54 +105,32 @@ const CameraPage: React.FC<CameraPageProps> = ({
     const squareCanvas = resizeToSquare(canvas, CAMERA_CONFIG.width);
     const imageData = squareCanvas.toDataURL(CAMERA_CONFIG.format);
 
-    onImageCapture(imageData);
+    setCapturedImage(imageData);
     setIsPhotoTaken(true);
     stopCamera();
-  }, [onImageCapture, stopCamera]);
+  }, [setCapturedImage, stopCamera]);
 
   const retakePhoto = useCallback(() => {
     setIsPhotoTaken(false);
-    onImageCapture('');
+    setCapturedImage('');
     startCamera();
-  }, [onImageCapture, startCamera]);
+  }, [setCapturedImage, startCamera]);
 
   const handleConfirm = useCallback(async () => {
-    if (!capturedImage || isSaving) return;
+    if (!capturedImage || isSavingHook) return;
 
     playSound('buttonClick');
-    setIsSaving(true);
 
-    // ブラウザ環境 (vite dev) と Electron 環境の分岐処理
-    if (window.electronAPI) {
-      // Electron 環境: ファイル保存を実行
-      try {
-        console.log('写真の保存を開始します...');
-        const result = await window.electronAPI.savePhoto(capturedImage);
-        if (result.success && result.dirPath) {
-          console.log('写真の保存に成功しました:', result.dirPath);
-          setResultDir(result.dirPath);
-          onConfirm(); // 保存が成功したら画面遷移
-        } else {
-          console.error('写真の保存に失敗しました:', result.error);
-          alert(`写真の保存に失敗しました: ${result.error}`);
-          setIsSaving(false);
-        }
-      } catch (error) {
-        console.error('写真の保存中に予期せぬエラーが発生しました:', error);
-        if (error instanceof Error) {
-            alert(`写真の保存中にエラーが発生しました: ${error.message}`);
-        } else {
-            alert(`写真の保存中に予期せぬエラーが発生しました: ${String(error)}`);
-        }
-        setIsSaving(false);
-      }
+    const result = await savePhoto(capturedImage);
+
+    if (result.success && result.dirPath) {
+      setResultDir(result.dirPath);
+      setCurrentScreen('COUNTDOWN');
     } else {
-      // ブラウザ環境: ファイル保存をスキップ
-      console.log('ブラウザ環境のため、ファイル保存をスキップします。');
-      setResultDir('browser-dummy-path'); // ダミーのパスを設定
-      onConfirm();
+      console.error('写真の保存に失敗しました:', saveError || result.error);
+      alert(`写真の保存に失敗しました: ${saveError || result.error}`);
     }
-  }, [capturedImage, onConfirm, setResultDir, isSaving]);
+  }, [capturedImage, setResultDir, setCurrentScreen, savePhoto, isSavingHook, saveError]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -168,7 +146,7 @@ const CameraPage: React.FC<CameraPageProps> = ({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isPhotoTaken, capturedImage, onConfirm, capturePhoto, handleConfirm]);
+  }, [isPhotoTaken, capturedImage, capturePhoto, handleConfirm]);
 
   const getRandomNickname = useCallback(() => {
     const nonRandomOptions = NICKNAME_OPTIONS.filter(opt => opt.id !== 'random');
@@ -179,15 +157,15 @@ const CameraPage: React.FC<CameraPageProps> = ({
   useEffect(() => {
     if (!selectedNickname || selectedNickname === 'ランダム') {
       const initialNickname = getRandomNickname();
-      onNicknameSelect(initialNickname);
+      setSelectedNickname(initialNickname);
     }
-  }, [selectedNickname, onNicknameSelect, getRandomNickname]);
+  }, [selectedNickname, setSelectedNickname, getRandomNickname]);
 
   const handleNicknameClick = useCallback((nickname: string) => {
     playSound('buttonClick');
     const finalNickname = nickname === 'ランダム' ? getRandomNickname() : nickname;
-    onNicknameSelect(finalNickname);
-  }, [onNicknameSelect, getRandomNickname]);
+    setSelectedNickname(finalNickname);
+  }, [setSelectedNickname, getRandomNickname]);
 
   return (
     <div className="camera-layout">
@@ -220,15 +198,22 @@ const CameraPage: React.FC<CameraPageProps> = ({
       <div className="camera-preview">
         <h2 className="text-xl font-bold mb-4">記念撮影</h2>
         
-        <div className="video-container mb-4" style={{ width: '320px', height: '320px' }}>
+        <div className="video-container mb-4 relative" style={{ width: '320px', height: '320px' }}>
           {!isPhotoTaken ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
+            <>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              {!isCameraReady && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 text-white text-xl font-bold">
+                  準備中...
+                </div>
+              )}
+            </>
           ) : (
             <img 
               src={capturedImage} 
@@ -252,14 +237,14 @@ const CameraPage: React.FC<CameraPageProps> = ({
               <button 
                 className="game-button w-full bg-green-600 hover:bg-green-700"
                 onClick={handleConfirm}
-                disabled={!capturedImage || isSaving}
+                disabled={!capturedImage || isSavingHook}
               >
-                {isSaving ? '保存中...' : '確定してスタート (Space)'}
+                {isSavingHook ? '保存中...' : '確定してスタート (Space)'}
               </button>
               <button 
                 className="game-button w-full bg-gray-600 hover:bg-gray-700"
                 onClick={retakePhoto}
-                disabled={isSaving}
+                disabled={isSavingHook}
               >
                 再撮影
               </button>

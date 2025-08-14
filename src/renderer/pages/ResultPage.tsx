@@ -1,86 +1,83 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { calculateLevel, calculateRank, generateJSTTimestamp } from '@shared/utils/helpers';
-import type { GameResult } from '@shared/types';
+import type { GameResult, GameRank, GameLevel } from '@shared/types';
 import { playSound } from '../utils/assets';
+import { useScreen } from '../contexts/ScreenContext';
+import { useGameSession } from '../contexts/GameSessionContext';
+import { useSaveGameResult } from '../hooks/useSaveGameResult';
 
-interface ResultPageProps {
-  score: number;
-  nickname: string;
-  capturedImage: string;
-  onRestart: () => void;
-  resultDir: string | null;
-}
+const ResultPage: React.FC = () => {
+  const { setCurrentScreen } = useScreen();
+  const {
+    gameScore,
+    selectedNickname,
+    capturedImage,
+    resultDir,
+    resetGameState,
+  } = useGameSession();
 
-const ResultPage: React.FC<ResultPageProps> = ({ 
-  score, 
-  nickname, 
-  capturedImage, 
-  onRestart, 
-  resultDir 
-}) => {
-  const [level, setLevel] = useState('');
-  const [rank, setRank] = useState('');
-  const [isSaving, setIsSaving] = useState(false); // UI表示用
-  const isSavingGuard = useRef(false); // 副作用ガード用
+  const [level, setLevel] = useState<GameLevel | '' >('');
+  const [rank, setRank] = useState<GameRank | '' >('');
+  const { saveGameResult, isSaving: isSavingHook, error: saveError } = useSaveGameResult();
   const [autoRestartTimer, setAutoRestartTimer] = useState(30);
 
+  const handleRestart = useCallback(() => {
+    resetGameState();
+    setCurrentScreen('TOP');
+  }, [resetGameState, setCurrentScreen]);
+
   useEffect(() => {
-    const levelValue = calculateLevel(score);
-    const rankValue = calculateRank(score);
+    const levelValue = calculateLevel(gameScore);
+    const rankValue = calculateRank(gameScore);
     setLevel(levelValue);
     setRank(rankValue);
 
     const performSave = async () => {
-      // ガードをチェックし、処理中なら中断
-      if (!resultDir || isSavingGuard.current) {
+      if (!resultDir || isSavingHook) {
         if (!resultDir) console.log('結果保存ディレクトリが指定されていないため、保存をスキップします。');
         return;
       }
       
-      // ガードを立て、UIを「保存中」に更新
-      isSavingGuard.current = true;
-      setIsSaving(true);
+      // isSavingGuard.current = true; // No longer needed
+      // setIsSaving(true); // No longer needed
 
       try {
         const timestamp = generateJSTTimestamp();
 
         const gameResult: GameResult = {
-          nickname,
+          nickname: selectedNickname,
           rank: rankValue,
           level: levelValue,
-          score,
+          score: gameScore,
           timestampJST: timestamp,
-          imagePath: 'photo.png', // 固定ファイル名
+          imagePath: 'photo.png',
         };
 
-        if (window.electronAPI) {
-          const resultSave = await window.electronAPI.saveJson(resultDir, gameResult);
-          if (resultSave.success) {
-            console.log('ゲーム結果を保存しました:', resultSave.filePath);
-          } else {
-            console.error('結果保存エラー:', resultSave.error);
-            alert(`結果の保存に失敗しました: ${resultSave.error}`);
-          }
+        const resultSave = await saveGameResult(resultDir, gameResult);
+        if (resultSave.success) {
+          console.log('ゲーム結果を保存しました:', resultSave.filePath);
+        } else {
+          console.error('結果保存エラー:', saveError || resultSave.error);
+          alert(`結果の保存に失敗しました: ${saveError || resultSave.error}`);
         }
       } catch (error) {
         console.error('結果保存中にエラーが発生しました:', error);
         alert(`結果の保存中にエラーが発生しました: ${error}`);
       } finally {
-        // UIとガードの状態をリセット
-        setIsSaving(false);
-        isSavingGuard.current = false;
+        // setIsSaving(false); // No longer needed
+        // isSavingGuard.current = false; // No longer needed
       }
     };
 
     performSave();
-  }, [score, nickname, rank, resultDir]);
+  }, [gameScore, selectedNickname, resultDir, isSavingHook, saveError, saveGameResult]);
 
   useEffect(() => {
     const countdown = setInterval(() => {
       setAutoRestartTimer(prev => {
         if (prev <= 1) {
           clearInterval(countdown);
-          onRestart();
+          handleRestart();
           return 0;
         }
         return prev - 1;
@@ -88,7 +85,7 @@ const ResultPage: React.FC<ResultPageProps> = ({
     }, 1000);
 
     return () => clearInterval(countdown);
-  }, [onRestart]);
+  }, [handleRestart]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -97,13 +94,13 @@ const ResultPage: React.FC<ResultPageProps> = ({
         playSound('buttonClick').catch(err => {
           console.warn('ボタンクリック音の再生エラー:', err);
         });
-        onRestart();
+        handleRestart();
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [onRestart]);
+  }, [handleRestart]);
 
   return (
     <div className="screen-container">
@@ -118,11 +115,11 @@ const ResultPage: React.FC<ResultPageProps> = ({
             />
           </div>
         )}
-        <h2 className="text-2xl font-bold text-center mb-4 text-yellow-400">{nickname}</h2>
-        <div className="score-display text-center">スコア: {score.toLocaleString()}</div>
+        <h2 className="text-2xl font-bold text-center mb-4 text-yellow-400">{selectedNickname}</h2>
+        <div className="score-display text-center">スコア: {gameScore.toLocaleString()}</div>
         <div className="level-display text-center">レベル: {level}</div>
         <div className="rank-display text-center">ランク: {rank}</div>
-        {isSaving && (
+        {isSavingHook && (
           <div className="text-center text-blue-400 mt-4">記録を保存中...</div>
         )}
       </div>
@@ -131,7 +128,7 @@ const ResultPage: React.FC<ResultPageProps> = ({
           className="game-button"
           onClick={() => {
             playSound('buttonClick');
-            onRestart();
+            handleRestart();
           }}
         >
           もう一度プレイ (Space)

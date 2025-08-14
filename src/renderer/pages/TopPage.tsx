@@ -2,12 +2,11 @@ import React, { useEffect, useCallback } from 'react';
 import { playSound, preloadSpecificAssets, preloadPixiAssets, initializeAudioSystem } from '../utils/assets';
 import TitleImageCarousel from '../components/TitleImageCarousel';
 import { TOP_PAGE_ASSETS } from '@shared/utils/constants';
+import { useScreen } from '../contexts/ScreenContext';
 
-interface TopPageProps {
-  onStart: () => void;
-}
+const TopPage: React.FC = () => {
+  const { setCurrentScreen } = useScreen();
 
-const TopPage: React.FC<TopPageProps> = ({ onStart }) => {
   // トップページアセットのプリロード
   useEffect(() => {
     preloadSpecificAssets(TOP_PAGE_ASSETS);
@@ -53,9 +52,9 @@ const TopPage: React.FC<TopPageProps> = ({ onStart }) => {
     } catch (err) {
       console.warn('スタート時の音声再生エラー:', err);
     } finally {
-      onStart();
+      setCurrentScreen('CAMERA');
     }
-  }, [onStart]);
+  }, [setCurrentScreen]);
 
   // Spaceキーでスタート
   useEffect(() => {

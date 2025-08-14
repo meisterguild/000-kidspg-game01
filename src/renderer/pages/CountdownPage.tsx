@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { playSound } from '../utils/assets';
+import { useScreen } from '../contexts/ScreenContext';
 
-interface CountdownPageProps {
-  onCountdownEnd: () => void;
-}
-
-const CountdownPage: React.FC<CountdownPageProps> = ({ onCountdownEnd }) => {
+const CountdownPage: React.FC = () => {
+  const { setCurrentScreen } = useScreen();
   const [count, setCount] = useState(3);
 
   useEffect(() => {
@@ -22,12 +20,12 @@ const CountdownPage: React.FC<CountdownPageProps> = ({ onCountdownEnd }) => {
       //playSound('newtype');
       // カウントダウン終了後、ゲーム画面に遷移
       const timer = setTimeout(() => {
-        onCountdownEnd();
+        setCurrentScreen('GAME');
       }, 500);
       
       return () => clearTimeout(timer);
     }
-  }, [count, onCountdownEnd]);
+  }, [count, setCurrentScreen]);
 
   return (
     <div className="screen-container">

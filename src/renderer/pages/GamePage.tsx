@@ -1,23 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PixiGameEngine } from '../game/PixiGameEngine';
 import { isPixiAssetsPreloaded, playSound } from '../utils/assets';
+import { useGameSession } from '../contexts/GameSessionContext';
 
-interface GamePageProps {
-  onGameEnd: (score: number) => void;
-}
-
-const GamePage: React.FC<GamePageProps> = ({ onGameEnd }) => {
+const GamePage: React.FC = () => {
+  const { handleGameEnd } = useGameSession();
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const gameEngineRef = useRef<PixiGameEngine | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // onGameEndの最新値を保持するためのref
-  const savedOnGameEnd = useRef(onGameEnd);
-  useEffect(() => {
-    savedOnGameEnd.current = onGameEnd;
-  }, [onGameEnd]);
 
   useEffect(() => {
     // gameContainerRef.current が利用可能になってから処理を開始
@@ -77,20 +69,16 @@ const GamePage: React.FC<GamePageProps> = ({ onGameEnd }) => {
           return;
         }
         
-        // 最新の onGameEnd を参照する
         gameEngine.setGameOverCallback((score: number) => {
           if (!abortController.signal.aborted) {
             setTimeout(() => {
-              // 結果画面切り替え直前に音を再生
               playSound('screenChange').catch(err => {
                 console.warn('結果画面遷移音の再生エラー:', err);
               });
-              
-              // 音声再生後すぐに画面遷移
               setTimeout(() => {
-                savedOnGameEnd.current(score);
-              }, 100); // 0.1秒後に結果画面へ
-            }, 1400); // 1.4秒待ってから音声再生
+                handleGameEnd(score);
+              }, 100);
+            }, 1400);
           }
         });
 
@@ -122,7 +110,7 @@ const GamePage: React.FC<GamePageProps> = ({ onGameEnd }) => {
         gameEngineRef.current = null;
       }
     };
-  }, []); // 依存配列は空にし、マウント時に一度だけ実行する
+  }, [handleGameEnd]);
 
   return (
     <div className="screen-container">
