@@ -3,17 +3,17 @@ import type { GameResult } from '@shared/types';
 
 // Renderer側で使用可能なAPI定義
 const electronAPI = {
-  // ゲーム結果保存
-  saveGameResult: (result: GameResult) => ipcRenderer.invoke('save-game-result', result),
-  
-  // 画像ファイル保存
-  saveImageFile: (imageData: string, filename: string) => 
-    ipcRenderer.invoke('save-image-file', imageData, filename),
-  
+  // 写真を保存し、結果保存用のディレクトリを作成する
+  savePhoto: (imageData: string) => ipcRenderer.invoke('save-photo', imageData),
+
+  // JSONデータを指定されたディレクトリに保存する
+  saveJson: (dirPath: string, jsonData: GameResult) =>
+    ipcRenderer.invoke('save-json', dirPath, jsonData),
+
   // ランキングウィンドウ制御
   showRankingWindow: () => ipcRenderer.invoke('show-ranking-window'),
   closeRankingWindow: () => ipcRenderer.invoke('close-ranking-window'),
-  
+
   // プラットフォーム情報
   platform: process.platform,
 };

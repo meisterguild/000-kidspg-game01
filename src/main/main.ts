@@ -2,6 +2,17 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
+// 日付を YYYYMMDD_HHMMSS 形式の文字列にフォーマットする
+const getFormattedDateTime = (date: Date): string => {
+  const Y = date.getFullYear();
+  const M = String(date.getMonth() + 1).padStart(2, '0');
+  const D = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  const s = String(date.getSeconds()).padStart(2, '0');
+  return `${Y}${M}${D}_${h}${m}${s}`;
+};
+
 // Electronメインプロセス
 class ElectronApp {
   private mainWindow: BrowserWindow | null = null;
@@ -12,7 +23,7 @@ class ElectronApp {
   }
 
   private initializeApp(): void {
-    app.whenReady().then(() => {
+    app.whenReady().then(async () => {
       // Media権限の設定（カメラ・マイクアクセスを許可）
       app.on('web-contents-created', (event, contents) => {
         contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
@@ -23,6 +34,9 @@ class ElectronApp {
           }
         });
       });
+
+      // resultsフォルダの存在を確認・作成
+      await this.ensureDirectoryExists('results');
 
       this.createMainWindow();
       this.setupIPC();
@@ -103,34 +117,32 @@ class ElectronApp {
   }
 
   private setupIPC(): void {
-    // ゲーム結果保存
-    ipcMain.handle('save-game-result', async (event, result) => {
+    // 写真を保存し、結果保存用のディレクトリを作成する
+    ipcMain.handle('save-photo', async (event, imageData: string) => {
       try {
-        await this.ensureDirectoryExists('results');
-        const filename = `result_${Date.now()}.json`;
-        const filepath = path.join(process.cwd(), 'results', filename);
-        
-        await fs.writeFile(filepath, JSON.stringify(result, null, 2));
-        return { success: true, filepath };
+        const dateTime = getFormattedDateTime(new Date());
+        const dirPath = path.join(process.cwd(), 'results', dateTime);
+        await fs.mkdir(dirPath, { recursive: true });
+
+        const filePath = path.join(dirPath, 'photo.png');
+        const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
+        await fs.writeFile(filePath, base64Data, 'base64');
+
+        return { success: true, dirPath: dirPath };
       } catch (error) {
-        console.error('Failed to save game result:', error);
+        console.error('Failed to save photo:', error);
         return { success: false, error: String(error) };
       }
     });
 
-    // 画像ファイル保存
-    ipcMain.handle('save-image-file', async (event, imageData, filename) => {
+    // JSONデータを指定されたディレクトリに保存する
+    ipcMain.handle('save-json', async (event, dirPath: string, jsonData: object) => {
       try {
-        await this.ensureDirectoryExists('cards');
-        const filepath = path.join(process.cwd(), 'cards', filename);
-        
-        // Base64データをバイナリに変換して保存
-        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-        await fs.writeFile(filepath, base64Data, 'base64');
-        
-        return { success: true, filepath };
+        const filePath = path.join(dirPath, 'result.json');
+        await fs.writeFile(filePath, JSON.stringify(jsonData, null, 2));
+        return { success: true, filePath: filePath };
       } catch (error) {
-        console.error('Failed to save image file:', error);
+        console.error('Failed to save JSON:', error);
         return { success: false, error: String(error) };
       }
     });

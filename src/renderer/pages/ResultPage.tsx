@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { calculateLevel, calculateRank, generateJSTTimestamp, generateSafeFileName } from '@shared/utils/helpers';
+import React, { useEffect, useState, useRef } from 'react';
+import { calculateLevel, calculateRank, generateJSTTimestamp } from '@shared/utils/helpers';
 import type { GameResult } from '@shared/types';
 import { playSound } from '../utils/assets';
 
@@ -8,17 +8,20 @@ interface ResultPageProps {
   nickname: string;
   capturedImage: string;
   onRestart: () => void;
+  resultDir: string | null;
 }
 
 const ResultPage: React.FC<ResultPageProps> = ({ 
   score, 
   nickname, 
   capturedImage, 
-  onRestart 
+  onRestart, 
+  resultDir 
 }) => {
   const [level, setLevel] = useState('');
   const [rank, setRank] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // UI表示用
+  const isSavingGuard = useRef(false); // 副作用ガード用
   const [autoRestartTimer, setAutoRestartTimer] = useState(30);
 
   useEffect(() => {
@@ -28,22 +31,18 @@ const ResultPage: React.FC<ResultPageProps> = ({
     setRank(rankValue);
 
     const performSave = async () => {
-      if (isSaving) return;
+      // ガードをチェックし、処理中なら中断
+      if (!resultDir || isSavingGuard.current) {
+        if (!resultDir) console.log('結果保存ディレクトリが指定されていないため、保存をスキップします。');
+        return;
+      }
+      
+      // ガードを立て、UIを「保存中」に更新
+      isSavingGuard.current = true;
       setIsSaving(true);
+
       try {
         const timestamp = generateJSTTimestamp();
-        const fileName = generateSafeFileName(nickname, timestamp);
-        
-        let imagePath = '';
-        if (capturedImage && window.electronAPI) {
-          const imageResult = await window.electronAPI.saveImageFile(
-            capturedImage, 
-            `${fileName}.png`
-          );
-          if (imageResult.success) {
-            imagePath = imageResult.filepath;
-          }
-        }
 
         const gameResult: GameResult = {
           nickname,
@@ -51,26 +50,30 @@ const ResultPage: React.FC<ResultPageProps> = ({
           level: levelValue,
           score,
           timestampJST: timestamp,
-          imagePath: imagePath
+          imagePath: 'photo.png', // 固定ファイル名
         };
 
         if (window.electronAPI) {
-          const resultSave = await window.electronAPI.saveGameResult(gameResult);
+          const resultSave = await window.electronAPI.saveJson(resultDir, gameResult);
           if (resultSave.success) {
-            console.log('ゲーム結果を保存しました:', resultSave.filepath);
+            console.log('ゲーム結果を保存しました:', resultSave.filePath);
           } else {
             console.error('結果保存エラー:', resultSave.error);
+            alert(`結果の保存に失敗しました: ${resultSave.error}`);
           }
         }
       } catch (error) {
         console.error('結果保存中にエラーが発生しました:', error);
+        alert(`結果の保存中にエラーが発生しました: ${error}`);
       } finally {
+        // UIとガードの状態をリセット
         setIsSaving(false);
+        isSavingGuard.current = false;
       }
     };
 
     performSave();
-  }, [score, nickname, capturedImage, isSaving]);
+  }, [score, nickname, rank, resultDir]);
 
   useEffect(() => {
     const countdown = setInterval(() => {
@@ -91,7 +94,6 @@ const ResultPage: React.FC<ResultPageProps> = ({
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === ' ' || event.key === 'Enter') {
         event.preventDefault();
-        // スペースバー/Enter押下時にbuttonClick音を再生
         playSound('buttonClick').catch(err => {
           console.warn('ボタンクリック音の再生エラー:', err);
         });

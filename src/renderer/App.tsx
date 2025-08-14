@@ -17,6 +17,15 @@ const App: React.FC = () => {
   const [selectedNickname, setSelectedNickname] = useState<string>('');
   const [gameScore, setGameScore] = useState<number>(0);
   const [assetsLoaded, setAssetsLoaded] = useState<boolean>(false);
+  const [resultDir, setResultDir] = useState<string | null>(null); // 結果保存ディレクトリのパス
+
+  // 状態をまとめてリセットする関数
+  const resetGameState = useCallback(() => {
+    setCapturedImage('');
+    setSelectedNickname('');
+    setGameScore(0);
+    setResultDir(null);
+  }, []);
 
   // 画面遷移ハンドラー
   const handleScreenTransition = useCallback((screen: GameScreen) => {
@@ -64,10 +73,7 @@ const App: React.FC = () => {
       if (event.key === 'Escape') {
         playSound('paltu');
         setCurrentScreen('TOP');
-        // 状態をリセット
-        setCapturedImage('');
-        setSelectedNickname('');
-        setGameScore(0);
+        resetGameState(); // 状態をリセット
       } else if (event.key === 't' || event.key === 'T') {
         setCurrentScreen('TEST');
       }
@@ -75,7 +81,7 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [resetGameState]);
 
   // 現在の画面に応じたコンポーネントをレンダリング
   const renderCurrentScreen = () => {
@@ -107,6 +113,7 @@ const App: React.FC = () => {
             selectedNickname={selectedNickname}
             onConfirm={() => handleScreenTransition('COUNTDOWN')}
             capturedImage={capturedImage}
+            setResultDir={setResultDir} // setResultDir を渡す
           />
         );
       
@@ -130,11 +137,9 @@ const App: React.FC = () => {
             score={gameScore}
             nickname={selectedNickname}
             capturedImage={capturedImage}
+            resultDir={resultDir} // resultDir を渡す
             onRestart={() => {
-              // 状態をリセット
-              setCapturedImage('');
-              setSelectedNickname('');
-              setGameScore(0);
+              resetGameState(); // 状態をリセット
               handleScreenTransition('TOP');
             }}
           />

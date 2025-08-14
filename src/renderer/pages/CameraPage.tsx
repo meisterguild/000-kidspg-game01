@@ -9,6 +9,7 @@ interface CameraPageProps {
   selectedNickname: string;
   onConfirm: () => void;
   capturedImage: string;
+  setResultDir: (dir: string) => void;
 }
 
 const CameraPage: React.FC<CameraPageProps> = ({
@@ -16,12 +17,14 @@ const CameraPage: React.FC<CameraPageProps> = ({
   onNicknameSelect,
   selectedNickname,
   onConfirm,
-  capturedImage
+  capturedImage,
+  setResultDir,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [isPhotoTaken, setIsPhotoTaken] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // 保存中フラグ
 
   const startCamera = useCallback(async () => {
     try {
@@ -29,7 +32,6 @@ const CameraPage: React.FC<CameraPageProps> = ({
         streamRef.current.getTracks().forEach(track => track.stop());
       }
       
-      // デバイス一覧を確認
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
       console.log('利用可能なビデオデバイス:', videoDevices.length);
@@ -41,20 +43,24 @@ const CameraPage: React.FC<CameraPageProps> = ({
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('カメラアクセスエラー:', error);
       let errorMessage = 'カメラにアクセスできませんでした。';
       
-      if (error.name === 'NotAllowedError') {
-        errorMessage += 'カメラの許可を確認してください。';
-      } else if (error.name === 'NotFoundError') {
-        errorMessage += 'カメラデバイスが見つかりません。';
-      } else if (error.name === 'NotReadableError') {
-        errorMessage += 'カメラが他のアプリケーションで使用中です。Zoom、Teams、OBSなどを終了してください。';
-      } else if (error.name === 'OverconstrainedError') {
-        errorMessage += 'カメラの設定に問題があります。';
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage += 'カメラの許可を確認してください。';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage += 'カメラデバイスが見つかりません。';
+        } else if (error.name === 'NotReadableError') {
+          errorMessage += 'カメラが他のアプリケーションで使用中です。Zoom、Teams、OBSなどを終了してください。';
+        } else if (error.name === 'OverconstrainedError') {
+          errorMessage += 'カメラの設定に問題があります。';
+        } else {
+          errorMessage += `エラー詳細: ${error.name} - ${error.message}`;
+        }
       } else {
-        errorMessage += `エラー詳細: ${error.name} - ${error.message}`;
+        errorMessage += `予期せぬエラーが発生しました: ${String(error)}`;
       }
       
       alert(errorMessage);
@@ -68,11 +74,10 @@ const CameraPage: React.FC<CameraPageProps> = ({
     }
   }, []);
 
-  // カメラは画面表示後に少し遅延して起動（UX改善とリソース節約）
   useEffect(() => {
     const timer = setTimeout(() => {
       startCamera();
-    }, 500); // 0.5秒遅延で起動
+    }, 500);
     
     return () => {
       clearTimeout(timer);
@@ -83,7 +88,6 @@ const CameraPage: React.FC<CameraPageProps> = ({
   const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current || !streamRef.current) return;
 
-    // 撮影音を再生
     playSound('buttonClick');
 
     const canvas = canvasRef.current;
@@ -104,13 +108,51 @@ const CameraPage: React.FC<CameraPageProps> = ({
     onImageCapture(imageData);
     setIsPhotoTaken(true);
     stopCamera();
-  }, [onImageCapture, stopCamera, setIsPhotoTaken]);
+  }, [onImageCapture, stopCamera]);
 
   const retakePhoto = useCallback(() => {
     setIsPhotoTaken(false);
     onImageCapture('');
     startCamera();
-  }, [onImageCapture, startCamera, setIsPhotoTaken]);
+  }, [onImageCapture, startCamera]);
+
+  const handleConfirm = useCallback(async () => {
+    if (!capturedImage || isSaving) return;
+
+    playSound('buttonClick');
+    setIsSaving(true);
+
+    // ブラウザ環境 (vite dev) と Electron 環境の分岐処理
+    if (window.electronAPI) {
+      // Electron 環境: ファイル保存を実行
+      try {
+        console.log('写真の保存を開始します...');
+        const result = await window.electronAPI.savePhoto(capturedImage);
+        if (result.success && result.dirPath) {
+          console.log('写真の保存に成功しました:', result.dirPath);
+          setResultDir(result.dirPath);
+          onConfirm(); // 保存が成功したら画面遷移
+        } else {
+          console.error('写真の保存に失敗しました:', result.error);
+          alert(`写真の保存に失敗しました: ${result.error}`);
+          setIsSaving(false);
+        }
+      } catch (error) {
+        console.error('写真の保存中に予期せぬエラーが発生しました:', error);
+        if (error instanceof Error) {
+            alert(`写真の保存中にエラーが発生しました: ${error.message}`);
+        } else {
+            alert(`写真の保存中に予期せぬエラーが発生しました: ${String(error)}`);
+        }
+        setIsSaving(false);
+      }
+    } else {
+      // ブラウザ環境: ファイル保存をスキップ
+      console.log('ブラウザ環境のため、ファイル保存をスキップします。');
+      setResultDir('browser-dummy-path'); // ダミーのパスを設定
+      onConfirm();
+    }
+  }, [capturedImage, onConfirm, setResultDir, isSaving]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -119,23 +161,21 @@ const CameraPage: React.FC<CameraPageProps> = ({
         if (!isPhotoTaken) {
           capturePhoto();
         } else if (capturedImage) {
-          onConfirm();
+          handleConfirm();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isPhotoTaken, capturedImage, onConfirm, capturePhoto]);
+  }, [isPhotoTaken, capturedImage, onConfirm, capturePhoto, handleConfirm]);
 
-  // ランダムニックネーム選択
   const getRandomNickname = useCallback(() => {
     const nonRandomOptions = NICKNAME_OPTIONS.filter(opt => opt.id !== 'random');
     const randomOption = nonRandomOptions[Math.floor(Math.random() * nonRandomOptions.length)];
     return randomOption.text;
   }, []);
 
-  // 初期状態でランダムニックネームを設定
   useEffect(() => {
     if (!selectedNickname || selectedNickname === 'ランダム') {
       const initialNickname = getRandomNickname();
@@ -211,17 +251,15 @@ const CameraPage: React.FC<CameraPageProps> = ({
             <>
               <button 
                 className="game-button w-full bg-green-600 hover:bg-green-700"
-                onClick={() => {
-                  playSound('buttonClick');
-                  onConfirm();
-                }}
-                disabled={!capturedImage}
+                onClick={handleConfirm}
+                disabled={!capturedImage || isSaving}
               >
-                確定してスタート (Space)
+                {isSaving ? '保存中...' : '確定してスタート (Space)'}
               </button>
               <button 
                 className="game-button w-full bg-gray-600 hover:bg-gray-700"
                 onClick={retakePhoto}
+                disabled={isSaving}
               >
                 再撮影
               </button>
