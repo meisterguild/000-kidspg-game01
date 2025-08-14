@@ -44,3 +44,5 @@ yarn-error.log*
 
 # KidsPG
 .claude/
+results/
+cards/

@@ -101,3 +101,50 @@ export const FILE_PATHS = {
   cards: 'cards/',
   public: 'public/'
 } as const;
+
+// アセット管理用の定数
+// 型定義のみ（実際のアセット管理は renderer/utils/assets.ts で行う）
+export type AssetKey = 
+  // SOUND_ASSETS
+  | 'action' | 'bell' | 'buttonClick' | 'jump' | 'machine' 
+  | 'newtype' | 'ng' | 'paltu' | 'screenChange' | 'sound7'
+  // IMAGE_ASSETS  
+  | 'spriteItems' | 'titleImage01' | 'titleImage02' | 'titleImage03' | 'titleImage04';
+
+export const TOP_PAGE_ASSETS: AssetKey[] = [
+  'buttonClick',
+  'newtype', // ウェルカム音声として追加
+  'titleImage01',
+  'titleImage02', 
+  'titleImage03',
+  'titleImage04'
+];
+
+export const RESULT_PAGE_ASSETS: AssetKey[] = [
+  'newtype',
+];
+
+export const SCREEN_TRANSITION_ASSETS: AssetKey[] = [
+  'screenChange',
+];
+
+export const GAME_ASSETS: AssetKey[] = [
+  'spriteItems', // PixiJS用の重要アセット
+  'action',
+  'bell',
+  'jump',
+  'machine',
+  'ng',
+  'paltu',
+  'sound7',
+];
+
+export const PIXI_ASSETS: AssetKey[] = [
+  'spriteItems', // PixiJSゲームエンジン用
+];
+
+export const ALL_BACKGROUND_ASSETS: AssetKey[] = [
+  ...GAME_ASSETS,
+  ...SCREEN_TRANSITION_ASSETS,
+  ...RESULT_PAGE_ASSETS,
+];

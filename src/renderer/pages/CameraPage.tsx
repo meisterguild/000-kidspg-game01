@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { NICKNAME_OPTIONS, CAMERA_CONFIG } from '@shared/utils/constants';
 import { resizeToSquare } from '@shared/utils/dom-helpers';
-import { playSound } from '@shared/utils/assets';
+import { playSound } from '../utils/assets';
 
 interface CameraPageProps {
   onImageCapture: (imageData: string) => void;
@@ -28,6 +28,12 @@ const CameraPage: React.FC<CameraPageProps> = ({
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      
+      // デバイス一覧を確認
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      console.log('利用可能なビデオデバイス:', videoDevices.length);
+      
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: { width: 640, height: 480 } 
       });
@@ -35,9 +41,23 @@ const CameraPage: React.FC<CameraPageProps> = ({
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('カメラアクセスエラー:', error);
-      alert('カメラにアクセスできませんでした。カメラの許可を確認してください。');
+      let errorMessage = 'カメラにアクセスできませんでした。';
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage += 'カメラの許可を確認してください。';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage += 'カメラデバイスが見つかりません。';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage += 'カメラが他のアプリケーションで使用中です。Zoom、Teams、OBSなどを終了してください。';
+      } else if (error.name === 'OverconstrainedError') {
+        errorMessage += 'カメラの設定に問題があります。';
+      } else {
+        errorMessage += `エラー詳細: ${error.name} - ${error.message}`;
+      }
+      
+      alert(errorMessage);
     }
   }, []);
 
@@ -48,9 +68,14 @@ const CameraPage: React.FC<CameraPageProps> = ({
     }
   }, []);
 
+  // カメラは画面表示後に少し遅延して起動（UX改善とリソース節約）
   useEffect(() => {
-    startCamera();
+    const timer = setTimeout(() => {
+      startCamera();
+    }, 500); // 0.5秒遅延で起動
+    
     return () => {
+      clearTimeout(timer);
       stopCamera();
     };
   }, [startCamera, stopCamera]);
@@ -187,7 +212,7 @@ const CameraPage: React.FC<CameraPageProps> = ({
               <button 
                 className="game-button w-full bg-green-600 hover:bg-green-700"
                 onClick={() => {
-                  playSound('screenChange');
+                  playSound('buttonClick');
                   onConfirm();
                 }}
                 disabled={!capturedImage}

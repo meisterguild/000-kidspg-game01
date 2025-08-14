@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PixiGameEngine } from '../game/PixiGameEngine';
+import { isPixiAssetsPreloaded, playSound } from '../utils/assets';
 
 interface GamePageProps {
   onGameEnd: (score: number) => void;
@@ -80,8 +81,16 @@ const GamePage: React.FC<GamePageProps> = ({ onGameEnd }) => {
         gameEngine.setGameOverCallback((score: number) => {
           if (!abortController.signal.aborted) {
             setTimeout(() => {
-              savedOnGameEnd.current(score);
-            }, 1500); // 1.5秒待ってから結果画面へ
+              // 結果画面切り替え直前に音を再生
+              playSound('screenChange').catch(err => {
+                console.warn('結果画面遷移音の再生エラー:', err);
+              });
+              
+              // 音声再生後すぐに画面遷移
+              setTimeout(() => {
+                savedOnGameEnd.current(score);
+              }, 100); // 0.1秒後に結果画面へ
+            }, 1400); // 1.4秒待ってから音声再生
           }
         });
 
@@ -130,7 +139,12 @@ const GamePage: React.FC<GamePageProps> = ({ onGameEnd }) => {
               <>
                 <div className="text-2xl text-gray-300 mb-4">ゲームを読み込み中...</div>
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                <div className="text-sm text-gray-500 mt-4">初期化中... (最大15秒)</div>
+                <div className="text-sm text-gray-500 mt-4">
+                  {isPixiAssetsPreloaded() 
+                    ? '高速初期化中...' 
+                    : '初期化中... (最大15秒)'
+                  }
+                </div>
               </>
             )}
             {error && !isLoading && (

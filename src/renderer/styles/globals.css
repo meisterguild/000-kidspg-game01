@@ -104,6 +104,101 @@
   .rank-display {
     @apply text-2xl font-bold text-yellow-400 mb-4;
   }
+  
+  .title-image-container {
+    @apply w-full max-w-lg mx-auto mb-8;
+    @apply relative;
+  }
+  
+  .title-image-wrapper {
+    @apply relative w-full;
+  }
+  
+  .title-image {
+    @apply w-full h-auto rounded-xl shadow-lg;
+    @apply border-2 border-gray-600;
+    @apply object-contain;
+  }
+  
+  .title-image-active {
+    @apply relative z-10;
+  }
+  
+  .title-image-inactive {
+    @apply absolute top-0 left-0;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  
+  .title-image-enter {
+    @apply absolute top-0 left-0 z-20;
+    animation: bounceInFromRight 2.0s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+  }
+  
+  .title-image-exit {
+    @apply relative;
+    z-index: 15;
+    animation: flyOutToLeft 2.0s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+  }
+  
+  @keyframes bounceInFromRight {
+    0% {
+      transform: translateX(150vw) translateY(-80vh) scale(0.3) rotate(25deg);
+      opacity: 0;
+    }
+    15% {
+      transform: translateX(120vw) translateY(-60vh) scale(0.4) rotate(20deg);
+      opacity: 0.3;
+    }
+    35% {
+      transform: translateX(60vw) translateY(-30vh) scale(0.8) rotate(12deg);
+      opacity: 0.7;
+    }
+    55% {
+      transform: translateX(-10vw) translateY(5vh) scale(1.2) rotate(-5deg);
+      opacity: 1;
+    }
+    70% {
+      transform: translateX(8vw) translateY(-3vh) scale(0.9) rotate(2deg);
+      opacity: 1;
+    }
+    85% {
+      transform: translateX(-3vw) translateY(1vh) scale(1.05) rotate(-1deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(0) translateY(0) scale(1) rotate(0deg);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes flyOutToLeft {
+    0% {
+      transform: translateX(0) translateY(0) scale(1) rotate(0deg);
+      opacity: 1;
+    }
+    15% {
+      transform: translateX(-8vw) translateY(-5vh) scale(0.95) rotate(-3deg);
+      opacity: 0.9;
+    }
+    35% {
+      transform: translateX(-25vw) translateY(-15vh) scale(0.8) rotate(-8deg);
+      opacity: 0.7;
+    }
+    55% {
+      transform: translateX(-50vw) translateY(-35vh) scale(0.6) rotate(-15deg);
+      opacity: 0.4;
+    }
+    75% {
+      transform: translateX(-80vw) translateY(-60vh) scale(0.4) rotate(-25deg);
+      opacity: 0.2;
+    }
+    100% {
+      transform: translateX(-150vw) translateY(-100vh) scale(0.2) rotate(-35deg);
+      opacity: 0;
+    }
+  }
 }
 
 @layer utilities {

@@ -13,6 +13,17 @@ class ElectronApp {
 
   private initializeApp(): void {
     app.whenReady().then(() => {
+      // Media権限の設定（カメラ・マイクアクセスを許可）
+      app.on('web-contents-created', (event, contents) => {
+        contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+          if (permission === 'media') {
+            callback(true); // カメラ・マイクアクセスを許可
+          } else {
+            callback(false);
+          }
+        });
+      });
+
       this.createMainWindow();
       this.setupIPC();
     });
@@ -37,7 +48,13 @@ class ElectronApp {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        preload: path.join(__dirname, 'preload.js')
+        preload: path.join(__dirname, 'preload.js'),
+        webSecurity: true,
+        // 音声自動再生を許可
+        autoplayPolicy: 'no-user-gesture-required',
+        // カメラとマイクアクセスを許可
+        allowRunningInsecureContent: false,
+        experimentalFeatures: false
       },
       icon: path.join(__dirname, '../../../assets/icon.png'),
       title: 'KidsPG - よけまくり中'

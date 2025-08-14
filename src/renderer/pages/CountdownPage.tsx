@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { playSound } from '@shared/utils/assets';
+import { playSound } from '../utils/assets';
 
 interface CountdownPageProps {
   onCountdownEnd: () => void;
@@ -19,7 +19,7 @@ const CountdownPage: React.FC<CountdownPageProps> = ({ onCountdownEnd }) => {
       return () => clearTimeout(timer);
     } else {
       // ゲーム開始音を再生
-      playSound('newtype');
+      //playSound('newtype');
       // カウントダウン終了後、ゲーム画面に遷移
       const timer = setTimeout(() => {
         onCountdownEnd();

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { calculateLevel, calculateRank, generateJSTTimestamp, generateSafeFileName } from '@shared/utils/helpers';
 import type { GameResult } from '@shared/types';
-import { playSound } from '@shared/utils/assets';
+import { playSound } from '../utils/assets';
 
 interface ResultPageProps {
   score: number;
@@ -26,9 +26,6 @@ const ResultPage: React.FC<ResultPageProps> = ({
     const rankValue = calculateRank(score);
     setLevel(levelValue);
     setRank(rankValue);
-
-    // 結果表示時に効果音を再生
-    playSound('newtype');
 
     const performSave = async () => {
       if (isSaving) return;
@@ -94,6 +91,10 @@ const ResultPage: React.FC<ResultPageProps> = ({
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === ' ' || event.key === 'Enter') {
         event.preventDefault();
+        // スペースバー/Enter押下時にbuttonClick音を再生
+        playSound('buttonClick').catch(err => {
+          console.warn('ボタンクリック音の再生エラー:', err);
+        });
         onRestart();
       }
     };
@@ -127,7 +128,7 @@ const ResultPage: React.FC<ResultPageProps> = ({
         <button 
           className="game-button"
           onClick={() => {
-            playSound('screenChange');
+            playSound('buttonClick');
             onRestart();
           }}
         >

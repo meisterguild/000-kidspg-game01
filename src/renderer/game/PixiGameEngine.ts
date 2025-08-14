@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 import { GAME_CONFIG, GAME_CANVAS } from '@shared/utils/constants';
-import { playSound } from '@shared/utils/assets';
+import { playSound } from '../utils/assets';
 import spriteSheetUrl from '../assets/images/sprite_items.png';
 
 interface GameState {
@@ -85,8 +85,23 @@ export class PixiGameEngine {
       
       container.appendChild(this.app.canvas);
       
-      // スプライトシートを読み込み
-      this.spriteTexture = await PIXI.Assets.load(spriteSheetUrl);
+      // スプライトシートを読み込み（プリロード済みの場合は即座に取得）
+      try {
+        // まずキャッシュから取得を試行
+        this.spriteTexture = PIXI.Assets.get(spriteSheetUrl);
+        
+        if (!this.spriteTexture) {
+          // キャッシュにない場合は改めて読み込み
+          console.log('スプライトシートをキャッシュから取得できませんでした。読み込み中...');
+          this.spriteTexture = await PIXI.Assets.load(spriteSheetUrl);
+        } else {
+          console.log('スプライトシートをキャッシュから高速取得しました');
+        }
+      } catch (loadError) {
+        console.warn('スプライトシート読み込みでエラーが発生しました:', loadError);
+        // フォールバック: 直接読み込みを試行
+        this.spriteTexture = await PIXI.Assets.load(spriteSheetUrl);
+      }
       
       // DOM更新を待つ
       await new Promise(resolve => requestAnimationFrame(resolve));

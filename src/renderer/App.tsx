@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import type { GameScreen } from '@shared/types';
-import { loadAssets, isAssetsLoaded, playSound } from '@shared/utils/assets';
+import { preloadSpecificAssets, isAssetsLoaded, playSound } from './utils/assets';
+import { ALL_BACKGROUND_ASSETS } from '@shared/utils/constants';
 
 // ページコンポーネントのインポート
 import TopPage from './pages/TopPage';
@@ -43,13 +44,13 @@ const App: React.FC = () => {
     const initializeAssets = async () => {
       try {
         if (!isAssetsLoaded()) {
-          console.log('アセット読み込み開始...');
-          await loadAssets();
-          console.log('アセット読み込み完了');
+          console.log('バックグラウンドアセット読み込み開始...');
+          await preloadSpecificAssets(ALL_BACKGROUND_ASSETS);
+          console.log('バックグラウンドアセット読み込み完了');
         }
         setAssetsLoaded(true);
       } catch (error) {
-        console.error('アセット読み込みエラー:', error);
+        console.error('バックグラウンドアセット読み込みエラー:', error);
         setAssetsLoaded(true); // エラーでも続行
       }
     };
