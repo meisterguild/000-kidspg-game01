@@ -14,8 +14,8 @@ export const GAME_CANVAS = {
 
 // カメラ撮影設定
 export const CAMERA_CONFIG = {
-  width: 500,
-  height: 500,
+  width: 512,
+  height: 512,
   format: 'image/png' as const
 };
 

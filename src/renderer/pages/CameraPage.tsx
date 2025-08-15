@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { NICKNAME_OPTIONS, CAMERA_CONFIG } from '@shared/utils/constants';
-import { resizeToSquare } from '@shared/utils/dom-helpers';
+import { useImageResize } from '../hooks/useImageResize';
 import { playSound } from '../utils/assets';
 import { useScreen } from '../contexts/ScreenContext';
 import { useGameSession } from '../contexts/GameSessionContext';
@@ -22,6 +22,7 @@ const CameraPage: React.FC = () => {
   const [isPhotoTaken, setIsPhotoTaken] = useState(!!capturedImage);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const { savePhoto, isSaving: isSavingHook, error: saveError } = useSavePhoto();
+  const { resizeToSquare } = useImageResize();
 
   const startCamera = useCallback(async () => {
     setIsCameraReady(false);
@@ -99,13 +100,16 @@ const CameraPage: React.FC = () => {
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
 
-    const squareCanvas = resizeToSquare(canvas, CAMERA_CONFIG.width);
-    const imageData = squareCanvas.toDataURL(CAMERA_CONFIG.format);
-
-    setCapturedImage(imageData);
-    setIsPhotoTaken(true);
-    stopCamera();
-  }, [setCapturedImage, stopCamera]);
+    try {
+      const imageData = resizeToSquare(canvas, CAMERA_CONFIG.width);
+      setCapturedImage(imageData);
+      setIsPhotoTaken(true);
+      stopCamera();
+    } catch (error) {
+      console.error('画像リサイズエラー:', error);
+      alert('画像の処理中にエラーが発生しました。もう一度お試しください。');
+    }
+  }, [resizeToSquare, setCapturedImage, stopCamera]);
 
   const retakePhoto = useCallback(() => {
     setIsPhotoTaken(false);

@@ -1,7 +1,15 @@
-// DOM操作が必要なヘルパー関数（レンダラープロセス専用）
+/**
+ * Canvas画像処理ユーティリティ
+ * カメラ撮影画像のリサイズやフォーマット変換を行います
+ */
 
-// Canvas要素から500x500の正方形画像を生成
-export const resizeToSquare = (canvas: HTMLCanvasElement, size: number = 500): HTMLCanvasElement => {
+/**
+ * Canvas要素から指定サイズの正方形画像を生成
+ * @param canvas 元のCanvas要素
+ * @param size 出力サイズ（デフォルト: 512px）
+ * @returns リサイズされた新しいCanvas要素
+ */
+export const resizeToSquare = (canvas: HTMLCanvasElement, size: number = 512): HTMLCanvasElement => {
   const squareCanvas = document.createElement('canvas');
   const ctx = squareCanvas.getContext('2d');
   if (!ctx) {

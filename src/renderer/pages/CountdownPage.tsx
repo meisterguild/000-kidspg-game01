@@ -34,7 +34,7 @@ const CountdownPage: React.FC = () => {
       </h2>
       
       <div className="countdown-text">
-        {count > 0 ? count : 'START!'}
+        {count > 0 ? count : 'スタート‼'}
       </div>
       
       <div className="mt-12">

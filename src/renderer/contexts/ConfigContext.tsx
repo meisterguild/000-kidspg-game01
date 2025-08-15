@@ -33,7 +33,7 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
         setConfig({
           game: {
             obstacle: {
-              speed: { min: 2.0, max: 20.0, incrementPerLevel: 1.0 },
+              speed: { min: 2.0, max: 50.0, incrementPerLevel: 1.0 },
               spawnDistance: { min: 200, max: 500, decrementPerLevel: 20 },
             },
             lane: { count: 3 },

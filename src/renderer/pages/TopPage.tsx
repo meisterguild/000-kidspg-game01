@@ -76,7 +76,7 @@ const TopPage: React.FC = () => {
       
       <div className="text-center space-y-8">
         <p className="text-xl md:text-2xl text-gray-300">
-          障害物をよけるチャレンジゲーム
+          キケンなやつをよけるチャレンジゲーム
         </p>
         
         <div className="space-y-4">
@@ -86,7 +86,7 @@ const TopPage: React.FC = () => {
           <div className="text-base text-gray-500 space-y-2">
             <p>← / → : 左右移動</p>
             <p>Space : スタート・すすむ・さつえい</p>
-            <p>Esc   : いつでもトップに戻る</p>
+            <p>Esc   : いつでもトップにもどる</p>
           </div>
         </div>
         

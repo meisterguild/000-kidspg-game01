@@ -6,7 +6,7 @@
       "_comment_speed_settings": "障害物の速度設定 (ピクセル/フレーム)",
       "speed": {
         "min": 2.0,
-        "max": 20.0,
+        "max": 50.0,
         "incrementPerLevel": 1.0
       },
       "_comment_spawn_distance_settings": "障害物間の距離設定 (ピクセル)",

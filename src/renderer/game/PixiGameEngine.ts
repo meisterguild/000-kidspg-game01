@@ -46,8 +46,6 @@ export class PixiGameEngine {
   private character: PIXI.Sprite;
   private spriteTexture: PIXI.Texture | null = null;
   private obstacles: Obstacle[] = [];
-  private scoreText: PIXI.Text;
-  private levelText: PIXI.Text;
   private gameOverCallback?: (score: number) => void;
   private obstacleCreationTimer?: number;
   private obstacleSpeed: number;
@@ -61,6 +59,14 @@ export class PixiGameEngine {
   private lanes: number[];
   private trailGraphics: PIXI.Graphics[] = [];
   private trailCreationTimer?: number;
+  // レスポンシブ対応用フラグ
+  private responsiveEnabled: boolean = true;
+  // リサイズイベント監視用
+  private resizeDebounceTimer?: number;
+  private lastResizeTime: number = 0;
+  // レーン位置管理用
+  private guidelineGraphics: PIXI.Graphics[] = [];
+  private uiBackgroundGraphics?: PIXI.Graphics;
 
   constructor(config: AppConfig) {
     this.config = config;
@@ -126,6 +132,13 @@ export class PixiGameEngine {
       
       this.setupGame();
       
+      // Phase 1: 初期化時にテスト用ログ出力
+      // Phase 6: 初期化時のみログ出力（パフォーマンス最適化）
+      this.logResponsiveCalculations();
+      
+      // Phase 3: リサイズハンドラーのセットアップ
+      this.setupResizeHandler();
+      
     } catch (error) {
       console.error('PixiJS初期化エラー:', error);
       throw error;
@@ -136,7 +149,6 @@ export class PixiGameEngine {
     try {
       // 実際のキャンバスサイズを取得
       const canvasWidth = this.app.screen.width;
-      const canvasHeight = this.app.screen.height;
       
       // レーン位置を動的に計算（レスポンシブ対応）
       const responsiveLaneWidth = Math.min(GAME_CONFIG.laneWidth, canvasWidth / (this.config.game.lane.count + 1));
@@ -146,56 +158,13 @@ export class PixiGameEngine {
         return startX + i * responsiveLaneWidth;
       });
 
-      // レーンガイドラインの描画（レーン境界線、レスポンシブ対応）
-      const guidelineWidth = Math.min(GAME_CONFIG.laneWidth, canvasWidth / (this.config.game.lane.count + 1));
-      for (let i = 0; i <= this.config.game.lane.count; i++) {
-        const totalWidth = (this.config.game.lane.count - 1) * guidelineWidth;
-        const startX = (canvasWidth - totalWidth) / 2;
-        const lineX = startX + i * guidelineWidth - guidelineWidth / 2;
-        
-        // 最初と最後の境界線は少し薄く
-        const alpha = (i === 0 || i === this.config.game.lane.count) ? 0.2 : 0.4;
-        
-        const guideline = new PIXI.Graphics();
-        guideline.moveTo(lineX, 0);
-        guideline.lineTo(lineX, canvasHeight);
-        guideline.stroke({ width: LINE_THICKNESS, color: LINE_COLOR, alpha });
-        this.app.stage.addChild(guideline);
-      }
+      // Phase 4: 初期ガイドライン描画（再描画システムで管理）
+      this.redrawGuidelines();
 
-      // UI表示エリアの背景（レスポンシブ高さ）
-      const uiBackgroundHeight = Math.max(60, canvasHeight * 0.12);
-      const uiBackground = new PIXI.Graphics();
-      uiBackground.rect(0, 0, canvasWidth, uiBackgroundHeight);
-      uiBackground.fill({ color: 0x000000, alpha: 0.7 });
-      this.app.stage.addChild(uiBackground);
+      // Phase 4: 初期UI背景描画（再描画システムで管理）
+      this.redrawUIBackground();
 
-      // スコア表示（左上）
-      const uiFontSize = Math.max(14, Math.min(24, canvasWidth / 35));
-      this.scoreText = new PIXI.Text({
-        text: `スコア: ${this.gameState.score}`,
-        style: new PIXI.TextStyle({
-          fill: 'white', 
-          fontSize: uiFontSize, 
-          fontFamily: 'Arial'
-        })
-      });
-      const uiPadding = Math.max(10, canvasWidth * 0.02);
-      this.scoreText.position.set(uiPadding, uiPadding);
-      this.app.stage.addChild(this.scoreText);
-
-      // レベル表示（右上）
-      this.levelText = new PIXI.Text({
-        text: `レベル: ${this.gameState.level}`,
-        style: new PIXI.TextStyle({
-          fill: 'white', 
-          fontSize: uiFontSize, 
-          fontFamily: 'Arial'
-        })
-      });
-      const levelTextWidth = Math.max(120, canvasWidth * 0.2);
-      this.levelText.position.set(canvasWidth - levelTextWidth, uiPadding);
-      this.app.stage.addChild(this.levelText);
+      // スコア・レベル表示は HTML側に移管（PixiJS側は削除）
 
       // プレイヤーキャラクター（スプライト使用）
       if (this.spriteTexture) {
@@ -205,12 +174,12 @@ export class PixiGameEngine {
         this.character.anchor.set(0.5, 0.5);
         
         // レスポンシブサイズ調整
-        const characterSize = Math.max(30, Math.min(60, canvasWidth / 15));
+        const { characterSize } = this.calculateResponsiveSizes();
         this.character.width = characterSize;
         this.character.height = characterSize;
       } else {
         // フォールバック: 元の緑四角（レスポンシブサイズ）
-        const characterSize = Math.max(30, Math.min(60, canvasWidth / 15));
+        const { characterSize } = this.calculateResponsiveSizes();
         const halfSize = characterSize / 2;
         const graphics = new PIXI.Graphics()
           .rect(-halfSize, -halfSize, characterSize, characterSize)
@@ -220,7 +189,7 @@ export class PixiGameEngine {
       }
       
       this.character.x = this.lanes[this.gameState.currentLane];
-      this.character.y = canvasHeight - 100;
+      this.character.y = this.calculateCharacterY();
       this.app.stage.addChild(this.character);
 
       // ゲームループ開始
@@ -300,12 +269,12 @@ export class PixiGameEngine {
       obstacle.anchor.set(0.5, 0.5);
       
       // レスポンシブサイズ調整
-      const obstacleSize = Math.max(30, Math.min(60, this.app.screen.width / 15));
+      const { obstacleSize } = this.calculateResponsiveSizes();
       obstacle.width = obstacleSize;
       obstacle.height = obstacleSize;
     } else {
       // フォールバック: 元の赤四角（レスポンシブサイズ）
-      const obstacleSize = Math.max(30, Math.min(60, this.app.screen.width / 15));
+      const { obstacleSize } = this.calculateResponsiveSizes();
       const halfSize = obstacleSize / 2;
       const graphics = new PIXI.Graphics()
         .rect(-halfSize, -halfSize, obstacleSize, obstacleSize)
@@ -340,8 +309,7 @@ export class PixiGameEngine {
 
   private addScore(points: number): void {
     this.gameState.score += points;
-    this.scoreText.text = `スコア: ${this.gameState.score}`;
-
+    
     // レベルアップ判定
     if (this.gameState.score > 0 && this.gameState.score % this.config.game.levelUpScoreInterval === 0) {
       this.levelUp();
@@ -359,7 +327,6 @@ export class PixiGameEngine {
 
   private levelUp(): void {
     this.gameState.level++;
-    this.levelText.text = `レベル: ${this.gameState.level}`;
     
     // レベルアップ音を再生
     playSound('bell');
@@ -415,7 +382,7 @@ export class PixiGameEngine {
 
   private createTrailSegment(x: number, y: number): void {
     const trail = new PIXI.Graphics();
-    const trailSize = Math.max(5, Math.min(15, this.app.screen.width / 80)); // レスポンシブサイズ
+    const { trailSize } = this.calculateResponsiveSizes(); // Phase 6: 最適化されたサイズ取得
     trail.circle(0, 0, trailSize).fill(0xFFFF00); // 黄色の円
     trail.alpha = 1.0; // 透過なし
     trail.x = x;
@@ -493,6 +460,18 @@ export class PixiGameEngine {
       this.keyboardHandler = undefined;
     }
     
+    // Phase 3: リサイズイベントリスナーを削除
+    if (this.resizeDebounceTimer) {
+      clearTimeout(this.resizeDebounceTimer);
+      this.resizeDebounceTimer = undefined;
+    }
+    
+    try {
+      this.app.renderer.off('resize', this.handleResize.bind(this));
+    } catch {
+      // エラーは無視（既に削除済みの場合）
+    }
+    
     // タイマーを停止
     if (this.obstacleCreationTimer) {
       clearInterval(this.obstacleCreationTimer);
@@ -524,13 +503,19 @@ export class PixiGameEngine {
     });
     this.trailGraphics = [];
     
-    // テキストオブジェクトを破棄
-    if (this.scoreText && !this.scoreText.destroyed) {
-      this.scoreText.destroy({ children: true });
+    // Phase 4: ガイドラインとUI背景を破棄
+    this.guidelineGraphics.forEach(guideline => {
+      if (guideline && !guideline.destroyed) {
+        guideline.destroy();
+      }
+    });
+    this.guidelineGraphics = [];
+    
+    if (this.uiBackgroundGraphics && !this.uiBackgroundGraphics.destroyed) {
+      this.uiBackgroundGraphics.destroy();
     }
-    if (this.levelText && !this.levelText.destroyed) {
-      this.levelText.destroy({ children: true });
-    }
+    
+    // スコア・レベルテキストは削除済み（HTML側に移管）
     
     // キャラクターを破棄
     if (this.character && !this.character.destroyed) {
@@ -567,10 +552,9 @@ export class PixiGameEngine {
       console.warn('テクスチャキャッシュクリーンアップに失敗:', error);
     }
 
-    // 障害物数が異常に多い場合の安全装置（メモリ保護）
-    if (this.obstacles.length > 100) {
-      console.warn(`障害物数が異常です (${this.obstacles.length})。古い障害物を強制削除します。`);
-      const excessObstacles = this.obstacles.splice(50); // 最新50個を残して削除
+    // Phase 6: 障害物数の最適化（メモリ保護強化）
+    if (this.obstacles.length > 80) {
+      const excessObstacles = this.obstacles.splice(40); // 最新40個を残して削除
       excessObstacles.forEach(obstacle => {
         if (obstacle.sprite.parent) {
           this.app.stage.removeChild(obstacle.sprite);
@@ -582,5 +566,234 @@ export class PixiGameEngine {
 
   public getScore(): number {
     return this.gameState.score;
+  }
+
+  public getLevel(): number {
+    return this.gameState.level;
+  }
+
+  // Phase 1: 基盤メソッド（計算のみ、適用しない）
+  private calculateResponsiveSizes(): {
+    characterSize: number;
+    obstacleSize: number;
+    trailSize: number;
+    uiFontSize: number;
+    uiPadding: number;
+    uiBackgroundHeight: number;
+  } {
+    const canvasWidth = this.app.screen.width;
+    const canvasHeight = this.app.screen.height;
+    
+    // キャラクターと障害物のサイズを統一
+    const gameObjectSize = Math.max(30, Math.min(60, canvasWidth / 15));
+    
+    return {
+      characterSize: gameObjectSize,
+      obstacleSize: gameObjectSize, // 同じサイズに統一
+      trailSize: Math.max(5, Math.min(15, canvasWidth / 80)),
+      uiFontSize: Math.max(14, Math.min(24, canvasWidth / 35)),
+      uiPadding: Math.max(10, canvasWidth * 0.02),
+      uiBackgroundHeight: Math.max(60, canvasHeight * 0.12)
+    };
+  }
+
+  private updateLayoutCalculations(): {
+    lanes: number[];
+    responsiveLaneWidth: number;
+    guidelineWidth: number;
+  } {
+    const canvasWidth = this.app.screen.width;
+    const responsiveLaneWidth = Math.min(GAME_CONFIG.laneWidth, canvasWidth / (this.config.game.lane.count + 1));
+    
+    const lanes = Array.from({ length: this.config.game.lane.count }, (_, i) => {
+      const totalWidth = (this.config.game.lane.count - 1) * responsiveLaneWidth;
+      const startX = (canvasWidth - totalWidth) / 2;
+      return startX + i * responsiveLaneWidth;
+    });
+    
+    return {
+      lanes,
+      responsiveLaneWidth,
+      guidelineWidth: responsiveLaneWidth
+    };
+  }
+
+  // Phase 6: テスト用ログ出力メソッド（最適化版）
+  private logResponsiveCalculations(): void {
+    if (!this.responsiveEnabled) return;
+    
+    try {
+      const sizes = this.calculateResponsiveSizes();
+      const layout = this.updateLayoutCalculations();
+      
+      // Phase 6: 統合テスト用の簡素化ログ
+      console.log('🎯 Responsive System Active:', {
+        canvas: `${this.app.screen.width}x${this.app.screen.height}`,
+        gameObjectSize: sizes.characterSize,
+        lanes: layout.lanes.length,
+        obstacles: this.obstacles.length
+      });
+    } catch (error) {
+      console.warn('レスポンシブ計算エラー:', error);
+    }
+  }
+
+  // UIテキスト更新メソッドは削除（HTML側に移管）
+
+  // Phase 3: リサイズイベント監視システム
+  private setupResizeHandler(): void {
+    if (!this.responsiveEnabled) return;
+    
+    // PixiJS v8のリサイズイベントを監視
+    this.app.renderer.on('resize', this.handleResize.bind(this));
+    // Phase 6: パフォーマンス最適化のためログ削除
+  }
+
+  private handleResize(): void {
+    if (!this.responsiveEnabled) return;
+    
+    const now = Date.now();
+    this.lastResizeTime = now;
+    
+    // Phase 6: 最適化されたデバウンス処理（150ms）
+    if (this.resizeDebounceTimer) {
+      clearTimeout(this.resizeDebounceTimer);
+    }
+    
+    this.resizeDebounceTimer = setTimeout(() => {
+      // 最新のリサイズから150ms経過後に実行（パフォーマンス最適化）
+      if (Date.now() - this.lastResizeTime >= 150) {
+        this.onResizeComplete();
+      }
+    }, 150);
+  }
+
+  private onResizeComplete(): void {
+    if (!this.responsiveEnabled || this.gameState.gameOver || this.isDestroyed) return;
+    
+    try {
+      // Phase 6: パフォーマンス最適化のためログ削除
+      // const newSize = { width: this.app.screen.width, height: this.app.screen.height };
+      // console.log('📐 Resize detected:', newSize);
+      
+      // Phase 4: レーンレイアウト更新を実行
+      this.updateLaneLayout();
+      
+    } catch (error) {
+      console.warn('リサイズ処理エラー:', error);
+    }
+  }
+
+  // Phase 4: レーン位置とガイドラインの動的更新
+  private updateLaneLayout(): void {
+    if (!this.responsiveEnabled) return;
+    
+    try {
+      const layout = this.updateLayoutCalculations();
+      
+      // レーン位置を更新
+      this.lanes = layout.lanes;
+      
+      // キャラクター位置を更新
+      this.updateCharacterPosition();
+      
+      // 既存障害物の位置とサイズを更新
+      this.updateExistingObstacles();
+      
+      // キャラクターサイズを更新
+      this.updateCharacterSize();
+      
+      // ガイドラインを再描画
+      this.redrawGuidelines();
+      
+      // UI背景を再描画
+      this.redrawUIBackground();
+      
+    } catch (error) {
+      console.warn('レーンレイアウト更新エラー:', error);
+    }
+  }
+
+  private redrawGuidelines(): void {
+    // 既存のガイドラインを削除
+    this.guidelineGraphics.forEach(guideline => {
+      if (guideline.parent) {
+        this.app.stage.removeChild(guideline);
+      }
+      guideline.destroy();
+    });
+    this.guidelineGraphics = [];
+    
+    // 新しいガイドラインを描画
+    const canvasWidth = this.app.screen.width;
+    const canvasHeight = this.app.screen.height;
+    const layout = this.updateLayoutCalculations();
+    
+    for (let i = 0; i <= this.config.game.lane.count; i++) {
+      const totalWidth = (this.config.game.lane.count - 1) * layout.responsiveLaneWidth;
+      const startX = (canvasWidth - totalWidth) / 2;
+      const lineX = startX + i * layout.responsiveLaneWidth - layout.responsiveLaneWidth / 2;
+      
+      const alpha = (i === 0 || i === this.config.game.lane.count) ? 0.2 : 0.4;
+      
+      const guideline = new PIXI.Graphics();
+      guideline.moveTo(lineX, 0);
+      guideline.lineTo(lineX, canvasHeight);
+      guideline.stroke({ width: LINE_THICKNESS, color: LINE_COLOR, alpha });
+      
+      this.app.stage.addChild(guideline);
+      this.guidelineGraphics.push(guideline);
+    }
+  }
+
+  private redrawUIBackground(): void {
+    // UI背景は削除（HTML側にスコア・レベル表示を移管したため不要）
+    if (this.uiBackgroundGraphics && this.uiBackgroundGraphics.parent) {
+      this.app.stage.removeChild(this.uiBackgroundGraphics);
+      this.uiBackgroundGraphics.destroy();
+      this.uiBackgroundGraphics = undefined;
+    }
+  }
+
+  // 既存障害物の位置とサイズを更新
+  private updateExistingObstacles(): void {
+    if (!this.responsiveEnabled || !this.obstacles.length) return;
+    
+    try {
+      const { obstacleSize } = this.calculateResponsiveSizes();
+      
+      this.obstacles.forEach(obstacle => {
+        // レーン位置を更新
+        if (obstacle.lane >= 0 && obstacle.lane < this.lanes.length) {
+          obstacle.sprite.x = this.lanes[obstacle.lane];
+        }
+        
+        // サイズを更新
+        obstacle.sprite.width = obstacleSize;
+        obstacle.sprite.height = obstacleSize;
+      });
+      
+    } catch (error) {
+      console.warn('障害物更新エラー:', error);
+    }
+  }
+
+  // キャラクターサイズを更新
+  private updateCharacterSize(): void {
+    if (!this.responsiveEnabled || !this.character) return;
+    
+    try {
+      const { characterSize } = this.calculateResponsiveSizes();
+      this.character.width = characterSize;
+      this.character.height = characterSize;
+    } catch (error) {
+      console.warn('キャラクターサイズ更新エラー:', error);
+    }
+  }
+
+  // キャラクターY位置を動的に計算（プレイエリア下端から15%の位置）
+  private calculateCharacterY(): number {
+    const canvasHeight = this.app.screen.height;
+    return canvasHeight * 0.85; // 下端から15%の位置
   }
 }
