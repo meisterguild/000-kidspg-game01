@@ -24,7 +24,6 @@ export const useSaveGameResult = (): UseSaveGameResultHook => {
       if (window.electronAPI) {
         const result = await window.electronAPI.saveJson(dirPath, gameResult);
         if (result.success) {
-          console.log('ゲーム結果を保存しました:', result.filePath);
           return { success: true, filePath: result.filePath };
         } else {
           console.error('結果保存エラー:', result.error);
@@ -32,7 +31,6 @@ export const useSaveGameResult = (): UseSaveGameResultHook => {
           return { success: false, error: result.error };
         }
       } else {
-        console.log('ブラウザ環境のため、ファイル保存をスキップします。');
         // Simulate success for browser environment
         return { success: true, filePath: 'browser-dummy-path/result.json' };
       }

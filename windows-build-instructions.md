@@ -27,7 +27,7 @@
 
 ### 📦 生成されるファイル
 
-- `release/KidsPG避けまくり中ゲーム Setup 1.0.0.exe` - インストーラー
+- `release/KidsPGよけまくり中ゲーム Setup 1.0.0.exe` - インストーラー
 - `release/kidspg-game-1.0.0-win.zip` - ポータブル版
 
 ### 🎯 その他のプラットフォーム

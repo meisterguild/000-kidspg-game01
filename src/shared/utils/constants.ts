@@ -1,11 +1,8 @@
-import type { GameConfig, NicknameOption } from '../types';
+import type { NicknameOption } from '../types';
 
 // ゲーム設定定数
-export const GAME_CONFIG: GameConfig = {
-  lanes: [-1, 0, 1], // 左、中央、右
+export const GAME_CONFIG = {
   laneWidth: 150,
-  obstacleSpeed: 4,
-  obstacleCreationInterval: 1500,
   levelUpScoreInterval: 100
 };
 

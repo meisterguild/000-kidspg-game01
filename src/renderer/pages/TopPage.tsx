@@ -56,6 +56,7 @@ const TopPage: React.FC = () => {
     }
   }, [setCurrentScreen]);
 
+
   // Spaceキーでスタート
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -84,7 +85,7 @@ const TopPage: React.FC = () => {
           </p>
           <div className="text-base text-gray-500 space-y-2">
             <p>← / → : 左右移動</p>
-            <p>Space : スタート・進行・撮影確定</p>
+            <p>Space : スタート・すすむ・さつえい</p>
             <p>Esc   : いつでもトップに戻る</p>
           </div>
         </div>

@@ -14,6 +14,12 @@ const electronAPI = {
   showRankingWindow: () => ipcRenderer.invoke('show-ranking-window'),
   closeRankingWindow: () => ipcRenderer.invoke('close-ranking-window'),
 
+  // 設定情報を取得
+  getConfig: () => ipcRenderer.invoke('get-config'),
+
+  // 設定ファイルを再読み込み
+  reloadConfig: () => ipcRenderer.invoke('reload-config'),
+
   // プラットフォーム情報
   platform: process.platform,
 };

@@ -1,7 +1,7 @@
 {
   "name": "kidspg-game",
   "version": "1.0.0",
-  "description": "KidsPG避けまくり中ゲーム - Electronアプリケーション",
+  "description": "KidsPGよけまくり中ゲーム - Electronアプリケーション",
   "main": "dist/main/main/main.js",
   "scripts": {
     "build": "npm run build:main && npm run build:renderer",
@@ -68,7 +68,7 @@
   },
   "build": {
     "appId": "com.kidspg.game",
-    "productName": "KidsPG避けまくり中ゲーム",
+    "productName": "KidsPGよけまくり中ゲーム",
     "icon": "assets/icon.png",
     "directories": {
       "output": "release"

@@ -61,14 +61,12 @@ export const loadAssets = async (): Promise<AssetManager> => {
         audio.addEventListener('canplaythrough', () => {
           clearTimeout(timeoutId);
           assetManager.sounds[key] = audio;
-          console.log(`音声ファイル読み込み成功: ${key} -> ${path}`);
           resolve();
         });
 
         audio.addEventListener('loadeddata', () => {
           clearTimeout(timeoutId);
           assetManager.sounds[key] = audio;
-          console.log(`音声ファイル読み込み成功(loadeddata): ${key} -> ${path}`);
           resolve();
         });
 
@@ -78,7 +76,6 @@ export const loadAssets = async (): Promise<AssetManager> => {
           resolve(); // エラーでも続行
         });
 
-        console.log(`音声ファイル読み込み開始: ${key} -> ${path}`);
         audio.src = path;
         audio.load(); // 明示的に読み込み開始
       });
@@ -116,10 +113,6 @@ export const loadAssets = async (): Promise<AssetManager> => {
     assetManager.isLoaded = true;
     globalAssetManager = assetManager;
     
-    console.log('アセット読み込み完了:', {
-      sounds: Object.keys(assetManager.sounds).length,
-      images: Object.keys(assetManager.images).length
-    });
 
     return assetManager;
 
@@ -163,7 +156,6 @@ export const preloadSpecificAssets = async (assetKeys: AssetKey[]): Promise<void
         const onCanPlay = () => {
           clearTimeout(timeoutId);
           if(globalAssetManager) globalAssetManager.sounds[soundKey] = audio;
-          console.log(`[Specific] 音声ファイル読み込み成功: ${soundKey} -> ${path}`);
           audio.removeEventListener('canplaythrough', onCanPlay);
           audio.removeEventListener('error', onError);
           resolve();
@@ -227,19 +219,12 @@ export const preloadSpecificAssets = async (assetKeys: AssetKey[]): Promise<void
 
     if(allSoundKeys.every(k => loadedSoundKeys.includes(k)) && allImageKeys.every(k => loadedImageKeys.includes(k))) {
       globalAssetManager.isLoaded = true;
-      console.log('全てのアセットの読み込みが完了しました。');
     }
   }
 };
 
 // アセットマネージャーを取得する関数
 export const getAssetManager = (): AssetManager | null => {
-  console.log(`📦 getAssetManager呼び出し:`, {
-    globalAssetManager: globalAssetManager ? 'EXISTS' : 'NULL',
-    isLoaded: globalAssetManager?.isLoaded,
-    soundsKeys: globalAssetManager ? Object.keys(globalAssetManager.sounds) : [],
-    imagesKeys: globalAssetManager ? Object.keys(globalAssetManager.images) : []
-  });
   return globalAssetManager;
 };
 
@@ -270,21 +255,18 @@ export const initializeAudioSystem = async (): Promise<void> => {
   if (context && context.state === 'suspended') {
     try {
       await context.resume();
-      console.log('✅ AudioContext resumed successfully.');
       audioInitialized = true;
     } catch (e) {
       console.error('❌ Failed to resume AudioContext:', e);
     }
   } else if (context) {
     // 状態が 'running' または 'closed' の場合
-    console.log(`AudioContext state is '${context.state}'. No action needed.`);
     audioInitialized = true;
   }
 };
 
 // 音声を再生する関数
 export const playSound = async (soundKey: keyof typeof SOUND_ASSETS, volume: number = 0.7): Promise<void> => {
-  console.log(`🔊 音声再生試行開始: ${soundKey}`);
   
   // ユーザー操作によるAudioContextの初期化を試みる
   await initializeAudioSystem();
@@ -302,16 +284,13 @@ export const playSound = async (soundKey: keyof typeof SOUND_ASSETS, volume: num
 
   try {
     const audio = assetManager.sounds[soundKey];
-    console.log(`🎵 音声オブジェクト取得成功: ${soundKey}`);
 
     audio.muted = false;
     audio.volume = Math.max(0, Math.min(1, volume)); // 0も許容
     audio.currentTime = 0;
 
-    console.log(`🎵 音声再生開始: ${soundKey}, volume: ${audio.volume}`);
     
     await audio.play();
-    console.log(`✅ 音声再生成功: ${soundKey}`);
 
   } catch (error) {
     const e = error as Error;
@@ -357,7 +336,6 @@ export const preloadPixiAssets = async (): Promise<void> => {
 
   pixiPreloadPromise = (async () => {
     try {
-      console.log('PixiJSアセットのプリロード開始...');
       
       // PixiJS.Assets を動的インポート
       const PIXI = await import('pixi.js');
@@ -374,7 +352,6 @@ export const preloadPixiAssets = async (): Promise<void> => {
       ]);
       
       pixiAssetsPreloaded = true;
-      console.log('PixiJSアセットのプリロード完了');
       
     } catch (error) {
       console.warn('PixiJSアセットのプリロードに失敗しました:', error);

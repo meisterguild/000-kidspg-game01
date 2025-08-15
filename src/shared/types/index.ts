@@ -12,12 +12,26 @@ export interface GameResult {
 }
 
 // ゲーム設定の型定義
-export interface GameConfig {
-  lanes: number[];
-  laneWidth: number;
-  obstacleSpeed: number;
-  obstacleCreationInterval: number;
-  levelUpScoreInterval: number;
+export interface AppConfig {
+  game: {
+    obstacle: {
+      speed: {
+        min: number;
+        max: number;
+        incrementPerLevel: number;
+      };
+      spawnDistance: {
+        min: number;
+        max: number;
+        decrementPerLevel: number;
+      };
+    };
+    lane: {
+      count: number;
+    };
+    levelUpScoreInterval: number;
+    targetFPS: number;
+  };
 }
 
 // カメラ撮影用の型定義

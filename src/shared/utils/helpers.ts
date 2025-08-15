@@ -8,17 +8,11 @@ export const generateJSTTimestamp = (): string => {
   return jstTime.toISOString().slice(0, 19).replace('T', ' ');
 };
 
-// スコアに基づくレベル計算
-export const calculateLevel = (score: number): string => {
-  if (score >= 1000) return 'MAX';
-  if (score >= 800) return 'Lv8';
-  if (score >= 600) return 'Lv7';
-  if (score >= 450) return 'Lv6';
-  if (score >= 300) return 'Lv5';
-  if (score >= 200) return 'Lv4';
-  if (score >= 120) return 'Lv3';
-  if (score >= 60) return 'Lv2';
-  return 'Lv1';
+// スコアに基づくレベル計算 (config.jsonのlevelUpScoreIntervalに基づく)
+export const calculateLevel = (score: number, levelUpScoreInterval: number): string => {
+  const level = Math.floor(score / levelUpScoreInterval) + 1;
+  if (level >= 20) return 'MAX';
+  return `Lv${level}`;
 };
 
 // スコアに基づくランク計算

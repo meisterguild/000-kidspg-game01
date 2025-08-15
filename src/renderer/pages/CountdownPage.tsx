@@ -39,10 +39,10 @@ const CountdownPage: React.FC = () => {
       
       <div className="mt-12">
         <p className="text-lg text-gray-400">
-          ← → キーで左右移動
+          ← / → キーで左右移動
         </p>
         <p className="text-lg text-gray-400">
-          上から落ちてくる赤い障害物を避けよう！
+          上からおちてくるキケンなやつをよけよう！
         </p>
       </div>
     </div>

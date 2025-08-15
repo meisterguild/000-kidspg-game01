@@ -4,10 +4,12 @@ import type { GameResult, GameRank, GameLevel } from '@shared/types';
 import { playSound } from '../utils/assets';
 import { useScreen } from '../contexts/ScreenContext';
 import { useGameSession } from '../contexts/GameSessionContext';
+import { useConfig } from '../contexts/ConfigContext';
 import { useSaveGameResult } from '../hooks/useSaveGameResult';
 
 const ResultPage: React.FC = () => {
   const { setCurrentScreen } = useScreen();
+  const { config } = useConfig();
   const {
     gameScore,
     selectedNickname,
@@ -27,14 +29,15 @@ const ResultPage: React.FC = () => {
   }, [resetGameState, setCurrentScreen]);
 
   useEffect(() => {
-    const levelValue = calculateLevel(gameScore);
+    if (!config) return; // configが読み込まれるまで待機
+    
+    const levelValue = calculateLevel(gameScore, config.game.levelUpScoreInterval);
     const rankValue = calculateRank(gameScore);
     setLevel(levelValue);
     setRank(rankValue);
 
     const performSave = async () => {
       if (!resultDir || isSavingHook) {
-        if (!resultDir) console.log('結果保存ディレクトリが指定されていないため、保存をスキップします。');
         return;
       }
       
@@ -55,7 +58,7 @@ const ResultPage: React.FC = () => {
 
         const resultSave = await saveGameResult(resultDir, gameResult);
         if (resultSave.success) {
-          console.log('ゲーム結果を保存しました:', resultSave.filePath);
+          // 保存成功 - 特に追加処理なし
         } else {
           console.error('結果保存エラー:', saveError || resultSave.error);
           alert(`結果の保存に失敗しました: ${saveError || resultSave.error}`);
@@ -70,7 +73,7 @@ const ResultPage: React.FC = () => {
     };
 
     performSave();
-  }, [gameScore, selectedNickname, resultDir, isSavingHook, saveError, saveGameResult]);
+  }, [gameScore, selectedNickname, resultDir, isSavingHook, saveError, saveGameResult, config]);
 
   useEffect(() => {
     const countdown = setInterval(() => {
@@ -131,7 +134,7 @@ const ResultPage: React.FC = () => {
             handleRestart();
           }}
         >
-          もう一度プレイ (Space)
+          おしまい (Space)
         </button>
         <p className="text-gray-400">{autoRestartTimer}秒後に自動的にトップ画面に戻ります</p>
         <p className="text-sm text-gray-500">Escキーでいつでもトップに戻れます</p>

@@ -23,7 +23,6 @@ export const useSavePhoto = (): UseSavePhotoHook => {
       if (window.electronAPI) {
         const result = await window.electronAPI.savePhoto(imageData);
         if (result.success) {
-          console.log('写真の保存に成功しました:', result.dirPath);
           return { success: true, dirPath: result.dirPath };
         } else {
           console.error('写真の保存に失敗しました:', result.error);
@@ -31,7 +30,6 @@ export const useSavePhoto = (): UseSavePhotoHook => {
           return { success: false, error: result.error };
         }
       } else {
-        console.log('ブラウザ環境のため、ファイル保存をスキップします。');
         // Simulate success for browser environment
         return { success: true, dirPath: 'browser-dummy-path' };
       }

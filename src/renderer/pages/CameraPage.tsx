@@ -30,9 +30,6 @@ const CameraPage: React.FC = () => {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
       
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      console.log('利用可能なビデオデバイス:', videoDevices.length);
       
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: { width: 640, height: 480 } 
@@ -196,7 +193,7 @@ const CameraPage: React.FC = () => {
       </div>
 
       <div className="camera-preview">
-        <h2 className="text-xl font-bold mb-4">記念撮影</h2>
+        <h2 className="text-xl font-bold mb-4">カメラをみて<br/>スペースバーをおす！</h2>
         
         <div className="video-container mb-4 relative" style={{ width: '320px', height: '320px' }}>
           {!isPhotoTaken ? (
@@ -230,7 +227,7 @@ const CameraPage: React.FC = () => {
               className="game-button w-full"
               onClick={capturePhoto}
             >
-              撮影 (Space)
+              さつえい (Space)
             </button>
           ) : (
             <>
@@ -239,14 +236,14 @@ const CameraPage: React.FC = () => {
                 onClick={handleConfirm}
                 disabled={!capturedImage || isSavingHook}
               >
-                {isSavingHook ? '保存中...' : '確定してスタート (Space)'}
+                {isSavingHook ? '保存中...' : 'スタート (Space)'}
               </button>
               <button 
                 className="game-button w-full bg-gray-600 hover:bg-gray-700"
                 onClick={retakePhoto}
                 disabled={isSavingHook}
               >
-                再撮影
+                やりなおし
               </button>
             </>
           )}

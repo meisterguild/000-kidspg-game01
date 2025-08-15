@@ -2,6 +2,28 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
+interface AppConfig {
+  game: {
+    obstacle: {
+      speed: {
+        min: number;
+        max: number;
+        incrementPerLevel: number;
+      };
+      spawnDistance: {
+        min: number;
+        max: number;
+        decrementPerLevel: number;
+      };
+    };
+    lane: {
+      count: number;
+    };
+    levelUpScoreInterval: number;
+    targetFPS: number;
+  };
+}
+
 // 日付を YYYYMMDD_HHMMSS 形式の文字列にフォーマットする
 const getFormattedDateTime = (date: Date): string => {
   const Y = date.getFullYear();
@@ -17,13 +39,28 @@ const getFormattedDateTime = (date: Date): string => {
 class ElectronApp {
   private mainWindow: BrowserWindow | null = null;
   private rankingWindow: BrowserWindow | null = null;
+  private config: AppConfig | null = null;
 
   constructor() {
     this.initializeApp();
   }
 
+  private async loadConfig(): Promise<AppConfig | null> {
+    try {
+      const configPath = path.join(app.getAppPath(), 'config.json');
+      const configContent = await fs.readFile(configPath, 'utf-8');
+      return JSON.parse(configContent);
+    } catch (error) {
+      console.error('設定ファイルの読み込みに失敗しました:', error);
+      return null;
+    }
+  }
+
   private initializeApp(): void {
     app.whenReady().then(async () => {
+      // 設定ファイルを読み込む
+      this.config = await this.loadConfig();
+
       // Media権限の設定（カメラ・マイクアクセスを許可）
       app.on('web-contents-created', (event, contents) => {
         contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
@@ -156,6 +193,22 @@ class ElectronApp {
     ipcMain.handle('close-ranking-window', () => {
       if (this.rankingWindow) {
         this.rankingWindow.close();
+      }
+    });
+
+    // 設定情報を取得
+    ipcMain.handle('get-config', () => {
+      return this.config;
+    });
+
+    // 設定ファイルを再読み込み
+    ipcMain.handle('reload-config', async () => {
+      try {
+        this.config = await this.loadConfig();
+        return { success: true, config: this.config };
+      } catch (error) {
+        console.error('設定ファイルの再読み込みに失敗しました:', error);
+        return { success: false, error: String(error) };
       }
     });
   }

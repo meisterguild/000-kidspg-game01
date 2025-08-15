@@ -1,0 +1,28 @@
+{
+  "_comment_game_settings": "ゲーム全体のパラメータ設定",
+  "game": {
+    "_comment_obstacle_settings": "障害物に関する設定",
+    "obstacle": {
+      "_comment_speed_settings": "障害物の速度設定 (ピクセル/フレーム)",
+      "speed": {
+        "min": 2.0,
+        "max": 20.0,
+        "incrementPerLevel": 1.0
+      },
+      "_comment_spawn_distance_settings": "障害物間の距離設定 (ピクセル)",
+      "spawnDistance": {
+        "min": 200,
+        "max": 500,
+        "decrementPerLevel": 20
+      }
+    },
+    "_comment_lane_settings": "レーンに関する設定",
+    "lane": {
+      "count": 3
+    },
+    "_comment_level_up_score_interval": "レベルアップに必要なスコア間隔",
+    "levelUpScoreInterval": 50,
+    "_comment_fps_setting": "ゲームのフレームレート設定",
+    "targetFPS": 60
+  }
+}

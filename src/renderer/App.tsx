@@ -3,6 +3,7 @@ import { preloadSpecificAssets, isAssetsLoaded, playSound } from './utils/assets
 import { ALL_BACKGROUND_ASSETS } from '@shared/utils/constants';
 import { ScreenProvider, useScreen } from './contexts/ScreenContext';
 import { GameSessionProvider, useGameSession } from './contexts/GameSessionContext';
+import { ConfigProvider, useConfig } from './contexts/ConfigContext';
 
 // ページコンポーネントのインポート
 import TopPage from './pages/TopPage';
@@ -16,15 +17,14 @@ import { TestPage } from './test/TestPage';
 const AppContent: React.FC = () => {
   const { currentScreen, setCurrentScreen, assetsLoaded, setAssetsLoaded } = useScreen();
   const { resetGameState } = useGameSession();
+  const { loading: configLoading, error: configError } = useConfig();
 
   // アセット読み込み
   useEffect(() => {
     const initializeAssets = async () => {
       try {
         if (!isAssetsLoaded()) {
-          console.log('バックグラウンドアセット読み込み開始...');
           await preloadSpecificAssets(ALL_BACKGROUND_ASSETS);
-          console.log('バックグラウンドアセット読み込み完了');
         }
         setAssetsLoaded(true);
       } catch (error) {
@@ -52,12 +52,25 @@ const AppContent: React.FC = () => {
   }, [setCurrentScreen, resetGameState]);
 
   // アセット読み込み中の表示
-  if (!assetsLoaded) {
+  if (!assetsLoaded || configLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-black text-white">
         <div className="text-center">
           <div className="text-2xl mb-4">読み込み中...</div>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Display error if config loading failed
+  if (configError) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-black text-red-500">
+        <div className="text-center">
+          <div className="text-2xl mb-4">設定ファイルの読み込みエラー:</div>
+          <div className="text-lg">{configError}</div>
+          <div className="text-sm text-gray-400 mt-4">アプリケーションを再起動してください。</div>
         </div>
       </div>
     );
@@ -91,7 +104,9 @@ const App: React.FC = () => {
   return (
     <ScreenProvider>
       <GameSessionProvider>
-        <AppContent />
+        <ConfigProvider>
+          <AppContent />
+        </ConfigProvider>
       </GameSessionProvider>
     </ScreenProvider>
   );
