@@ -1,28 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-
-interface AppConfig {
-  game: {
-    obstacle: {
-      speed: {
-        min: number;
-        max: number;
-        incrementPerLevel: number;
-      };
-      spawnDistance: {
-        min: number;
-        max: number;
-        decrementPerLevel: number;
-      };
-    };
-    lane: {
-      count: number;
-    };
-    levelUpScoreInterval: number;
-    targetFPS: number;
-  };
-}
+import { ComfyUIService } from './services/comfyui-service';
+import type { AppConfig } from '@shared/types';
 
 // 日付を YYYYMMDD_HHMMSS 形式の文字列にフォーマットする
 const getFormattedDateTime = (date: Date): string => {
@@ -40,6 +20,7 @@ class ElectronApp {
   private mainWindow: BrowserWindow | null = null;
   private rankingWindow: BrowserWindow | null = null;
   private config: AppConfig | null = null;
+  private comfyUIService: ComfyUIService | null = null;
 
   constructor() {
     this.initializeApp();
@@ -77,9 +58,13 @@ class ElectronApp {
 
       this.createMainWindow();
       this.setupIPC();
+      await this.initializeComfyUI();
     });
 
-    app.on('window-all-closed', () => {
+    app.on('window-all-closed', async () => {
+      if (this.comfyUIService) {
+        await this.comfyUIService.destroy();
+      }
       if (process.platform !== 'darwin') {
         app.quit();
       }
@@ -163,9 +148,58 @@ class ElectronApp {
         const dirPath = path.join(process.cwd(), 'results', dateTime);
         await fs.mkdir(dirPath, { recursive: true });
 
-        const filePath = path.join(dirPath, 'photo.png');
+        const photoFileName = `photo_${dateTime}.png`;
+        const filePath = path.join(dirPath, photoFileName);
         const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
         await fs.writeFile(filePath, base64Data, 'base64');
+
+        // ComfyUI設定がある場合、ワークフローテンプレートをコピーして変数置換したimage_generate.jsonを作成
+        if (this.config?.comfyui) {
+          try {
+            const templatePath = path.join(app.getAppPath(), this.config.comfyui.workflow.templatePath);
+            const templateContent = await fs.readFile(templatePath, 'utf-8');
+            const workflowTemplate = JSON.parse(templateContent);
+
+            // 変数置換
+            // SaveImageノード(node 9)のfilename_prefixを更新（日時付き）
+            if (workflowTemplate['9'] && workflowTemplate['9'].inputs) {
+              const saveImageInputs = workflowTemplate['9'].inputs;
+              const outputPrefix = `${this.config.comfyui.workflow.outputPrefix}_${dateTime}`;
+              if (typeof saveImageInputs.filename_prefix === 'string' && saveImageInputs.filename_prefix.includes('${filename_prefix}')) {
+                saveImageInputs.filename_prefix = saveImageInputs.filename_prefix.replace('${filename_prefix}', outputPrefix);
+              } else {
+                saveImageInputs.filename_prefix = outputPrefix;
+              }
+            }
+            
+            // LoadImageノード(node 10)のimageファイル名を更新（日時付き）
+            if (workflowTemplate['10'] && workflowTemplate['10'].inputs) {
+              const loadImageInputs = workflowTemplate['10'].inputs;
+              if (typeof loadImageInputs.image === 'string' && loadImageInputs.image.includes('${photo_png}')) {
+                loadImageInputs.image = loadImageInputs.image.replace('${photo_png}', photoFileName);
+              } else {
+                loadImageInputs.image = photoFileName;
+              }
+            }
+
+            const imageGeneratePath = path.join(dirPath, 'image_generate.json');
+            await fs.writeFile(imageGeneratePath, JSON.stringify(workflowTemplate, null, 2));
+            console.log(`Created image_generate.json with processed workflow: ${imageGeneratePath}`);
+
+            // ComfyUIが有効な場合、即座に画像をアップロード
+            if (this.comfyUIService) {
+              try {
+                console.log(`Starting pre-upload for datetime: ${dateTime}`);
+                await this.comfyUIService.preUploadImage(base64Data, dateTime);
+                console.log(`Pre-upload completed for datetime: ${dateTime}`);
+              } catch (error) {
+                console.warn('Pre-upload failed, will upload during conversion:', error);
+              }
+            }
+          } catch (error) {
+            console.error('Failed to create image_generate.json:', error);
+          }
+        }
 
         return { success: true, dirPath: dirPath };
       } catch (error) {
@@ -213,6 +247,96 @@ class ElectronApp {
         return { success: false, error: String(error) };
       }
     });
+
+    // ComfyUI画像変換リクエスト
+    ipcMain.handle('comfyui-transform', async (event, imageData: string, datetime: string, resultDir: string) => {
+      try {
+        if (!this.comfyUIService) {
+          return { success: false, error: 'ComfyUI service not initialized' };
+        }
+
+        // 既存のジョブをdatetimeで重複チェック
+        const activeJobs = this.comfyUIService.getActiveJobs();
+        const existingJob = activeJobs.find(job => job.datetime === datetime);
+        if (existingJob) {
+          console.log(`ComfyUI job already exists for datetime: ${datetime}`);
+          return { success: false, error: `Job already exists for ${datetime}` };
+        }
+
+        const jobId = await this.comfyUIService.transformImage({
+          imageData,
+          datetime,
+          resultDir
+        });
+
+        console.log(`ComfyUI transformation started: ${jobId} for ${datetime}`);
+        return { success: true, jobId };
+      } catch (error) {
+        console.error('ComfyUI transformation failed:', error);
+        return { success: false, error: String(error) };
+      }
+    });
+
+    // ComfyUIステータス取得
+    ipcMain.handle('comfyui-status', async () => {
+      try {
+        if (!this.comfyUIService) {
+          return { success: false, error: 'ComfyUI service not initialized' };
+        }
+
+        const status = await this.comfyUIService.getStatus();
+        return { success: true, status };
+      } catch (error) {
+        console.error('ComfyUI status check failed:', error);
+        return { success: false, error: String(error) };
+      }
+    });
+
+    // ComfyUIヘルスチェック
+    ipcMain.handle('comfyui-health-check', async () => {
+      try {
+        if (!this.comfyUIService) {
+          return { success: false, isHealthy: false };
+        }
+
+        const isHealthy = await this.comfyUIService.healthCheck();
+        return { success: true, isHealthy };
+      } catch (error) {
+        console.error('ComfyUI health check failed:', error);
+        return { success: false, isHealthy: false };
+      }
+    });
+
+    // ComfyUIアクティブジョブ取得
+    ipcMain.handle('comfyui-active-jobs', async () => {
+      try {
+        if (!this.comfyUIService) {
+          return { success: false, jobs: [] };
+        }
+
+        const jobs = this.comfyUIService.getActiveJobs();
+        return { success: true, jobs };
+      } catch (error) {
+        console.error('ComfyUI active jobs check failed:', error);
+        return { success: false, jobs: [] };
+      }
+    });
+  }
+
+  private async initializeComfyUI(): Promise<void> {
+    try {
+      if (!this.config?.comfyui) {
+        console.log('ComfyUI configuration not found, skipping initialization');
+        return;
+      }
+
+      this.comfyUIService = new ComfyUIService(this.config.comfyui, this.mainWindow || undefined);
+      await this.comfyUIService.initialize();
+      console.log('ComfyUI Service initialized successfully');
+    } catch (error) {
+      console.error('ComfyUI initialization failed:', error);
+      this.comfyUIService = null;
+    }
   }
 
   private async ensureDirectoryExists(dir: string): Promise<void> {

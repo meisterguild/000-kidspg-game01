@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { GameResult } from '@shared/types';
+import type { 
+  ComfyUIEventCallback, 
+  ComfyUIErrorCallback,
+  ComfyUITransformResult,
+  ComfyUIStatusResult,
+  ComfyUIHealthResult,
+  ComfyUIJobsResult
+} from '@shared/types/comfyui';
 
 // Renderer側で使用可能なAPI定義
 const electronAPI = {
@@ -19,6 +27,45 @@ const electronAPI = {
 
   // 設定ファイルを再読み込み
   reloadConfig: () => ipcRenderer.invoke('reload-config'),
+
+  // ComfyUI API
+  comfyui: {
+    transform: (imageData: string, datetime: string, resultDir: string): Promise<ComfyUITransformResult> =>
+      ipcRenderer.invoke('comfyui-transform', imageData, datetime, resultDir),
+    getStatus: (): Promise<ComfyUIStatusResult> => ipcRenderer.invoke('comfyui-status'),
+    healthCheck: (): Promise<ComfyUIHealthResult> => ipcRenderer.invoke('comfyui-health-check'),
+    getActiveJobs: (): Promise<ComfyUIJobsResult> => ipcRenderer.invoke('comfyui-active-jobs'),
+    onJobQueued: (callback: ComfyUIEventCallback) => {
+      ipcRenderer.on('comfyui-job-queued', (_, data) => callback(data));
+    },
+    onJobStarted: (callback: ComfyUIEventCallback) => {
+      ipcRenderer.on('comfyui-job-started', (_, data) => callback(data));
+    },
+    onJobProcessing: (callback: ComfyUIEventCallback) => {
+      ipcRenderer.on('comfyui-job-processing', (_, data) => callback(data));
+    },
+    onJobQueueUpdate: (callback: ComfyUIEventCallback) => {
+      ipcRenderer.on('comfyui-job-queue-update', (_, data) => callback(data));
+    },
+    onJobCompleted: (callback: ComfyUIEventCallback) => {
+      ipcRenderer.on('comfyui-job-completed', (_, data) => callback(data));
+    },
+    onJobError: (callback: ComfyUIEventCallback) => {
+      ipcRenderer.on('comfyui-job-error', (_, data) => callback(data));
+    },
+    onError: (callback: ComfyUIErrorCallback) => {
+      ipcRenderer.on('comfyui-error', (_, data) => callback(data));
+    },
+    removeAllListeners: () => {
+      ipcRenderer.removeAllListeners('comfyui-job-queued');
+      ipcRenderer.removeAllListeners('comfyui-job-started');
+      ipcRenderer.removeAllListeners('comfyui-job-processing');
+      ipcRenderer.removeAllListeners('comfyui-job-queue-update');
+      ipcRenderer.removeAllListeners('comfyui-job-completed');
+      ipcRenderer.removeAllListeners('comfyui-job-error');
+      ipcRenderer.removeAllListeners('comfyui-error');
+    }
+  },
 
   // プラットフォーム情報
   platform: process.platform,

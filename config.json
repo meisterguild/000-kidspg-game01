@@ -24,5 +24,30 @@
     "levelUpScoreInterval": 50,
     "_comment_fps_setting": "ゲームのフレームレート設定",
     "targetFPS": 60
+  },
+  "_comment_comfyui_settings": "ComfyUI画像変換システム設定",
+  "comfyui": {
+    "_comment_base_url": "ComfyUIサーバーのベースURL",
+    "baseUrl": "http://127.0.0.1:8188",
+    "_comment_polling_interval": "キュー状態チェック間隔（ミリ秒）",
+    "pollingInterval": 2000,
+    "_comment_max_concurrent_jobs": "同時処理可能ジョブ数",
+    "maxConcurrentJobs": 3,
+    "_comment_timeouts": "タイムアウト設定（ミリ秒）",
+    "timeouts": {
+      "upload": 60000,
+      "processing": 600000,
+      "queue": 900000
+    },
+    "_comment_retry_settings": "リトライ設定",
+    "retry": {
+      "maxAttempts": 3,
+      "delayMs": 1000
+    },
+    "_comment_workflow_settings": "ワークフロー設定",
+    "workflow": {
+      "templatePath": "assets/ComfyUI_KidsPG_01.json",
+      "outputPrefix": "photo_anime"
+    }
   }
 }

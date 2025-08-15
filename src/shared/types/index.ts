@@ -32,6 +32,24 @@ export interface AppConfig {
     levelUpScoreInterval: number;
     targetFPS: number;
   };
+  comfyui?: {
+    baseUrl: string;
+    pollingInterval: number;
+    maxConcurrentJobs: number;
+    timeouts: {
+      upload: number;
+      processing: number;
+      queue: number;
+    };
+    retry: {
+      maxAttempts: number;
+      delayMs: number;
+    };
+    workflow: {
+      templatePath: string;
+      outputPrefix: string;
+    };
+  };
 }
 
 // カメラ撮影用の型定義
@@ -52,3 +70,16 @@ export interface IPCMessage {
   type: string;
   payload?: unknown;
 }
+
+// ComfyUI関連の型定義をre-export
+export type {
+  ComfyUIJobProgressData,
+  ComfyUIStatus,
+  ComfyUIActiveJob,
+  ComfyUITransformResult,
+  ComfyUIStatusResult,
+  ComfyUIHealthResult,
+  ComfyUIJobsResult,
+  ComfyUIEventCallback,
+  ComfyUIErrorCallback
+} from './comfyui';

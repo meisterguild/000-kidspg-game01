@@ -22,6 +22,7 @@ const ResultPage: React.FC = () => {
   const [rank, setRank] = useState<GameRank | '' >('');
   const { saveGameResult, isSaving: isSavingHook, error: saveError } = useSaveGameResult();
   const [autoRestartTimer, setAutoRestartTimer] = useState(30);
+  const [comfyUIExecuted, setComfyUIExecuted] = useState(false);
 
   const handleRestart = useCallback(() => {
     resetGameState();
@@ -40,12 +41,13 @@ const ResultPage: React.FC = () => {
       if (!resultDir || isSavingHook) {
         return;
       }
-      
-      // isSavingGuard.current = true; // No longer needed
-      // setIsSaving(true); // No longer needed
 
       try {
         const timestamp = generateJSTTimestamp();
+
+        // resultDirから日時を抽出してphotoファイル名を作成
+        const dirName = resultDir.split(/[/\\]/).pop() || '';
+        const photoFileName = `photo_${dirName}.png`;
 
         const gameResult: GameResult = {
           nickname: selectedNickname,
@@ -53,12 +55,36 @@ const ResultPage: React.FC = () => {
           level: levelValue,
           score: gameScore,
           timestampJST: timestamp,
-          imagePath: 'photo.png',
+          imagePath: photoFileName,
         };
 
         const resultSave = await saveGameResult(resultDir, gameResult);
         if (resultSave.success) {
-          // 保存成功 - 特に追加処理なし
+          // 保存成功後、ComfyUI変換を開始（設定が有効で未実行の場合のみ）
+          console.log('ComfyUI check - config.comfyui:', !!config.comfyui, 'capturedImage:', !!capturedImage, 'comfyUIExecuted:', comfyUIExecuted);
+          if (config.comfyui && capturedImage && !comfyUIExecuted) {
+            setComfyUIExecuted(true);
+            try {
+              // resultDirから正しい日時フォーマットを抽出
+              const dirName = resultDir.split(/[/\\]/).pop() || '';
+              console.log('Starting ComfyUI transformation...', { dirName, resultDir });
+              const transformResult = await window.electronAPI.comfyui.transform(
+                capturedImage,
+                dirName,
+                resultDir
+              );
+              
+              if (transformResult.success) {
+                console.log('ComfyUI transformation queued:', transformResult.jobId);
+              } else {
+                console.warn('ComfyUI transformation failed:', transformResult.error);
+              }
+            } catch (error) {
+              console.warn('ComfyUI transformation error:', error);
+            }
+          } else {
+            console.log('ComfyUI transformation skipped - conditions not met');
+          }
         } else {
           console.error('結果保存エラー:', saveError || resultSave.error);
           alert(`結果の保存に失敗しました: ${saveError || resultSave.error}`);
@@ -66,14 +92,11 @@ const ResultPage: React.FC = () => {
       } catch (error) {
         console.error('結果保存中にエラーが発生しました:', error);
         alert(`結果の保存中にエラーが発生しました: ${error}`);
-      } finally {
-        // setIsSaving(false); // No longer needed
-        // isSavingGuard.current = false; // No longer needed
       }
     };
 
     performSave();
-  }, [gameScore, selectedNickname, resultDir, isSavingHook, saveError, saveGameResult, config]);
+  }, [gameScore, selectedNickname, resultDir, isSavingHook, saveError, saveGameResult, config, comfyUIExecuted, capturedImage]);
 
   useEffect(() => {
     const countdown = setInterval(() => {
