@@ -7,7 +7,7 @@ interface SavePhotoResult {
 }
 
 interface UseSavePhotoHook {
-  savePhoto: (imageData: string) => Promise<SavePhotoResult>;
+  savePhoto: (imageData: string, isDummy?: boolean) => Promise<SavePhotoResult>;
   isSaving: boolean;
   error: string | null;
 }
@@ -16,12 +16,12 @@ export const useSavePhoto = (): UseSavePhotoHook => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const savePhoto = useCallback(async (imageData: string): Promise<SavePhotoResult> => {
+  const savePhoto = useCallback(async (imageData: string, isDummy = false): Promise<SavePhotoResult> => {
     setIsSaving(true);
     setError(null);
     try {
       if (window.electronAPI) {
-        const result = await window.electronAPI.savePhoto(imageData);
+        const result = await window.electronAPI.savePhoto(imageData, isDummy);
         if (result.success) {
           return { success: true, dirPath: result.dirPath };
         } else {

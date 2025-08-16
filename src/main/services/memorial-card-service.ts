@@ -35,10 +35,10 @@ export class MemorialCardService {
   }
 
   /**
-   * ComfyUI完了イベントのハンドリング
+   * ダミー画像用のメモリアルカード生成
    */
-  async handleComfyUICompletion(datetime: string, resultDir: string): Promise<void> {
-    console.log(`MemorialCardService - ComfyUI completion triggered for: ${datetime}`);
+  async generateFromDummyImage(datetime: string, resultDir: string): Promise<void> {
+    console.log(`MemorialCardService - Starting memorial card generation for dummy image: ${datetime}`);
     
     if (!this.config.enabled) {
       console.log('MemorialCardService - Memorial card generation is disabled');
@@ -49,7 +49,7 @@ export class MemorialCardService {
       const result = await this.generateMemorialCard(resultDir);
       
       if (result.success) {
-        console.log(`MemorialCardService - Memorial card generated successfully: ${result.outputPath}`);
+        console.log(`MemorialCardService - Memorial card generated: ${result.outputPath}`);
         this.sendToRenderer('memorial-card-generated', {
           success: true,
           datetime,
@@ -67,13 +67,65 @@ export class MemorialCardService {
       }
       
     } catch (error) {
-      console.error('MemorialCardService - Unexpected error during memorial card generation:', error);
+      console.error('MemorialCardService - Unexpected error during dummy image memorial card generation:', error);
       this.sendToRenderer('memorial-card-error', {
         success: false,
         datetime,
         error: error instanceof Error ? error.message : String(error)
       });
     }
+  }
+
+  /**
+   * AI変換画像用のメモリアルカード生成
+   */
+  async generateFromAIImage(jobId: string, resultDir: string): Promise<void> {
+    console.log(`MemorialCardService - AI image memorial card generation for job: ${jobId}, resultDir: ${resultDir}`);
+    
+    if (!this.config.enabled) {
+      console.log('MemorialCardService - Memorial card generation is disabled');
+      return;
+    }
+    
+    console.log(`MemorialCardService - Config enabled, starting AI image card generation`);
+
+    try {
+      const result = await this.generateMemorialCard(resultDir);
+      
+      if (result.success) {
+        console.log(`MemorialCardService - AI image memorial card generated successfully: ${result.outputPath}`);
+        this.sendToRenderer('memorial-card-generated', {
+          success: true,
+          datetime: jobId,
+          outputPath: result.outputPath,
+          duration: result.duration
+        });
+      } else {
+        console.error(`MemorialCardService - AI image memorial card generation failed: ${result.error}`);
+        this.sendToRenderer('memorial-card-error', {
+          success: false,
+          datetime: jobId,
+          error: result.error,
+          duration: result.duration
+        });
+      }
+      
+    } catch (error) {
+      console.error('MemorialCardService - Unexpected error during AI image memorial card generation:', error);
+      this.sendToRenderer('memorial-card-error', {
+        success: false,
+        datetime: jobId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * 廃止予定: ComfyUI完了イベントのハンドリング（後方互換性のために残存）
+   */
+  async handleComfyUICompletion(datetime: string, resultDir: string): Promise<void> {
+    console.warn('MemorialCardService - handleComfyUICompletion is deprecated, use generateFromAIImage instead');
+    await this.generateFromAIImage(datetime, resultDir);
   }
 
   /**

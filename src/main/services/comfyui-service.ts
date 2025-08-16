@@ -3,7 +3,6 @@ import * as path from 'path';
 import { BrowserWindow } from 'electron';
 import type { ComfyUIJobProgressData, ComfyUIStatus } from '@shared/types/comfyui';
 import { TIMING_CONFIG } from '../../shared/utils/constants';
-import { MemorialCardService, type MemorialCardConfig } from './memorial-card-service';
 
 interface ComfyUIJobRequest {
   imageData: string;
@@ -41,16 +40,10 @@ export class ComfyUIService {
     startTime: number;
   }>();
   private preUploadedImages = new Map<string, string>(); // datetime -> uploaded filename
-  private memorialCardService: MemorialCardService | null = null;
-
-  constructor(config: ComfyUIConfig, memorialCardConfig?: MemorialCardConfig, mainWindow?: BrowserWindow) {
+  private memorialCardCallback: ((jobId: string, resultDir: string) => Promise<void>) | null = null;
+  constructor(config: ComfyUIConfig, memorialCardConfig?: undefined, mainWindow?: BrowserWindow) {
     this.config = config;
     this.mainWindow = mainWindow || null;
-    
-    // 記念カードサービスの初期化
-    if (memorialCardConfig) {
-      this.memorialCardService = new MemorialCardService(memorialCardConfig, mainWindow);
-    }
   }
 
   async initialize(): Promise<void> {
@@ -145,16 +138,17 @@ export class ComfyUIService {
         this.updateJobStatus((data as ComfyUIJobProgressData).jobId, 'completed');
         this.sendToRenderer('comfyui-job-completed', data);
         
-        // 記念カード生成をトリガー
+        // メモリアルカード生成をトリガー
         const jobData = data as ComfyUIJobProgressData;
         const job = this.activeJobs.get(jobData.jobId);
-        if (job && this.memorialCardService) {
-          console.log(`ComfyUIService - Triggering memorial card generation for: ${jobData.jobId}`);
-          // 非同期で記念カード生成を実行（ComfyUIの処理をブロックしない）
-          this.memorialCardService.handleComfyUICompletion(jobData.jobId, job.resultDir)
+        if (job && this.memorialCardCallback) {
+          console.log(`ComfyUIService - Triggering memorial card generation for AI image: ${jobData.jobId}`);
+          this.memorialCardCallback(jobData.jobId, job.resultDir)
             .catch(error => {
               console.error('ComfyUIService - Memorial card generation error:', error);
             });
+        } else if (job && !this.memorialCardCallback) {
+          console.warn('ComfyUIService - Memorial card callback not set, skipping card generation');
         }
         break;
       }
@@ -327,6 +321,11 @@ export class ComfyUIService {
       duration: Date.now() - job.startTime
     }));
   }
+
+  setMemorialCardCallback(callback: (jobId: string, resultDir: string) => Promise<void>): void {
+    this.memorialCardCallback = callback;
+  }
+
 
   async cancelJob(datetime: string): Promise<boolean> {
     if (!this.worker) {

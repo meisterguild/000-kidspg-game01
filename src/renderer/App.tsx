@@ -4,6 +4,7 @@ import { ALL_BACKGROUND_ASSETS } from '@shared/utils/constants';
 import { ScreenProvider, useScreen } from './contexts/ScreenContext';
 import { GameSessionProvider, useGameSession } from './contexts/GameSessionContext';
 import { ConfigProvider, useConfig } from './contexts/ConfigContext';
+import { CameraProvider } from './contexts/CameraContext';
 
 // ページコンポーネントのインポート
 import TopPage from './pages/TopPage';
@@ -110,7 +111,9 @@ const App: React.FC = () => {
     <ScreenProvider>
       <GameSessionProvider>
         <ConfigProvider>
-          <AppContent />
+          <CameraProvider>
+            <AppContent />
+          </CameraProvider>
         </ConfigProvider>
       </GameSessionProvider>
     </ScreenProvider>

@@ -190,15 +190,20 @@ export class ImageCompositionConfig {
     
     try {
       const files = fs.readdirSync(resultDir);
+      console.log(`ImageCompositionConfig - Searching for photo_anime in ${resultDir}`);
+      console.log(`ImageCompositionConfig - Available files:`, files);
+      
       const animeFile = files.find((file: string) => 
         file.startsWith('photo_anime_') && file.endsWith('.png')
       );
       
       if (animeFile) {
+        console.log(`ImageCompositionConfig - Found anime file: ${animeFile}`);
         return path.join(resultDir, animeFile);
       }
       
       console.warn(`ImageCompositionConfig - photo_anime file not found in ${resultDir}`);
+      console.warn(`ImageCompositionConfig - Files in directory:`, files);
       return null;
     } catch (error) {
       console.error('ImageCompositionConfig - Error reading result directory:', error);

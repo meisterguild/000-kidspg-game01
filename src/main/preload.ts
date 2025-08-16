@@ -12,7 +12,7 @@ import type {
 // Renderer側で使用可能なAPI定義
 const electronAPI = {
   // 写真を保存し、結果保存用のディレクトリを作成する
-  savePhoto: (imageData: string) => ipcRenderer.invoke('save-photo', imageData),
+  savePhoto: (imageData: string, isDummy?: boolean) => ipcRenderer.invoke('save-photo', imageData, isDummy),
 
   // JSONデータを指定されたディレクトリに保存する
   saveJson: (dirPath: string, jsonData: GameResult) =>
