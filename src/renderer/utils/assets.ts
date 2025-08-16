@@ -1,5 +1,6 @@
 // アセット管理システム
 import type { AssetKey } from '@shared/utils/constants';
+import { TIMING_CONFIG } from '@shared/utils/constants';
 
 export interface AssetManager {
   sounds: Record<string, HTMLAudioElement>;
@@ -89,7 +90,7 @@ export const loadAssets = async (): Promise<AssetManager> => {
         const timeoutId = setTimeout(() => {
           console.warn(`画像ファイルの読み込みがタイムアウトしました: ${path}`);
           resolve(); // タイムアウトでもエラーにしない
-        }, 5000);
+        }, TIMING_CONFIG.comfyuiTimeout);
 
         img.onload = () => {
           clearTimeout(timeoutId);
@@ -189,7 +190,7 @@ export const preloadSpecificAssets = async (assetKeys: AssetKey[]): Promise<void
          const timeoutId = setTimeout(() => {
           console.warn(`[Specific] 画像ファイルの読み込みがタイムアウトしました: ${path}`);
           resolve();
-        }, 5000);
+        }, TIMING_CONFIG.comfyuiTimeout);
 
         img.onload = () => {
           clearTimeout(timeoutId);

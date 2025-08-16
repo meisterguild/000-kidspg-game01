@@ -14,8 +14,8 @@ export const GAME_CANVAS = {
 
 // カメラ撮影設定
 export const CAMERA_CONFIG = {
-  width: 512,
-  height: 512,
+  width: 380,
+  height: 380,
   format: 'image/png' as const
 };
 
@@ -145,3 +145,69 @@ export const ALL_BACKGROUND_ASSETS: AssetKey[] = [
   ...SCREEN_TRANSITION_ASSETS,
   ...RESULT_PAGE_ASSETS,
 ];
+
+// タイミング関連の定数
+export const TIMING_CONFIG = {
+  cameraStartDelay: 500,
+  comfyuiTimeout: 5000,
+  gameMemoryCheckInterval: 18000, // 5分 (60FPS * 300秒)
+  trailCreationInterval: 300,
+  resizeDebounceDelay: 150,
+  countdownInterval: 500,
+} as const;
+
+// スプライトシート関連の定数
+export const SPRITE_CONFIG = {
+  sheetSize: {
+    width: 1024,
+    height: 1536
+  },
+  grid: {
+    cols: 7,
+    rows: 11
+  },
+  padding: {
+    top: 13,
+    left: 16,
+    right: 10,
+    bottom: 10
+  },
+  sprites: {
+    player: { col: 1, row: 4 },
+    enemy: { col: 0, row: 3 }
+  }
+} as const;
+
+// パフォーマンス関連の定数
+export const PERFORMANCE_CONFIG = {
+  maxObstacles: 80,
+  obstacleCleanupThreshold: 40,
+  memoryMaintenanceInterval: 30 * 60 * 1000, // 30分
+  imageMaxSize: 4096,
+  trailAlphaDecrement: 0.02,
+  trailScaleDecrement: 0.98
+} as const;
+
+// ウィンドウ・画面サイズ関連の定数
+export const WINDOW_CONFIG = {
+  main: {
+    width: 1024,
+    height: 800
+  },
+  video: {
+    width: 640,
+    height: 480
+  },
+  gameContainer: {
+    maxWidth: 800
+  }
+} as const;
+
+// UI関連の定数
+export const UI_CONFIG = {
+  lineColor: 0xCCCCCC,
+  lineThickness: 2,
+  gameOverOffset: 50,
+  characterYPosition: 0.85, // 画面下端から15%の位置
+  obstacleOffscreenOffset: 50
+} as const;

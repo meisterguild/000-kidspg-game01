@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { ComfyUIService } from './services/comfyui-service';
 import type { AppConfig } from '@shared/types';
+import { WINDOW_CONFIG } from '../shared/utils/constants';
 
 // 日付を YYYYMMDD_HHMMSS 形式の文字列にフォーマットする
 const getFormattedDateTime = (date: Date): string => {
@@ -80,7 +81,7 @@ class ElectronApp {
   private createMainWindow(): void {
     this.mainWindow = new BrowserWindow({
       width: 1200,
-      height: 800,
+      height: WINDOW_CONFIG.main.height,
       autoHideMenuBar: true,
       webPreferences: {
         nodeIntegration: false,
@@ -117,7 +118,7 @@ class ElectronApp {
     }
 
     this.rankingWindow = new BrowserWindow({
-      width: 1024,
+      width: WINDOW_CONFIG.main.width,
       height: 768,
       autoHideMenuBar: true,
       parent: this.mainWindow || undefined,

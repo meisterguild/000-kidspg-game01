@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { playSound } from '../utils/assets';
 import { useScreen } from '../contexts/ScreenContext';
+import { TIMING_CONFIG } from '@shared/utils/constants';
 
 const CountdownPage: React.FC = () => {
   const { setCurrentScreen } = useScreen();
@@ -21,7 +22,7 @@ const CountdownPage: React.FC = () => {
       // カウントダウン終了後、ゲーム画面に遷移
       const timer = setTimeout(() => {
         setCurrentScreen('GAME');
-      }, 500);
+      }, TIMING_CONFIG.countdownInterval);
       
       return () => clearTimeout(timer);
     }

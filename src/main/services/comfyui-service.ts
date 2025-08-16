@@ -2,6 +2,7 @@ import { Worker } from 'worker_threads';
 import * as path from 'path';
 import { BrowserWindow } from 'electron';
 import type { ComfyUIJobProgressData, ComfyUIStatus } from '@shared/types/comfyui';
+import { TIMING_CONFIG } from '../../shared/utils/constants';
 
 interface ComfyUIJobRequest {
   imageData: string;
@@ -255,7 +256,7 @@ export class ComfyUIService {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Status request timeout'));
-      }, 5000);
+      }, TIMING_CONFIG.comfyuiTimeout);
 
       const messageHandler = (message: { type: string; data: ComfyUIStatus }) => {
         if (message.type === 'status') {
@@ -278,7 +279,7 @@ export class ComfyUIService {
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
         resolve(false);
-      }, 5000);
+      }, TIMING_CONFIG.comfyuiTimeout);
 
       const messageHandler = (message: { type: string; data: { isHealthy: boolean } }) => {
         if (message.type === 'health-check-result') {

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { CAMERA_CONFIG, PERFORMANCE_CONFIG } from '@shared/utils/constants';
 
 interface UseImageResizeReturn {
   resizeToSquare: (canvas: HTMLCanvasElement, size?: number) => string;
@@ -16,7 +17,7 @@ export const useImageResize = (): UseImageResizeReturn => {
 
   const resizeToSquare = useCallback((
     canvas: HTMLCanvasElement, 
-    size: number = 512
+    size: number = CAMERA_CONFIG.width
   ): string => {
     setIsProcessing(true);
     setError(null);
@@ -27,8 +28,8 @@ export const useImageResize = (): UseImageResizeReturn => {
         throw new Error('有効なCanvas要素を指定してください');
       }
       
-      if (size <= 0 || size > 4096) {
-        throw new Error('サイズは1から4096の範囲で指定してください');
+      if (size <= 0 || size > PERFORMANCE_CONFIG.imageMaxSize) {
+        throw new Error(`サイズは1から${PERFORMANCE_CONFIG.imageMaxSize}の範囲で指定してください`);
       }
 
       // 新しいCanvas要素を作成

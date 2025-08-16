@@ -3,6 +3,7 @@ import { PixiGameEngine } from '../game/PixiGameEngine';
 import { isPixiAssetsPreloaded, playSound } from '../utils/assets';
 import { useGameSession } from '../contexts/GameSessionContext';
 import { useConfig } from '../contexts/ConfigContext';
+import { WINDOW_CONFIG } from '@shared/utils/constants';
 
 const GamePage: React.FC = () => {
   const { handleGameEnd } = useGameSession();
@@ -237,7 +238,7 @@ const GamePage: React.FC = () => {
             ref={gameContainerRef}
             className="border-2 border-blue-400 rounded-lg overflow-hidden bg-black w-full"
             style={{ 
-              maxWidth: '800px',
+              maxWidth: `${WINDOW_CONFIG.gameContainer.maxWidth}px`,
               width: '100%',
               // メッセージ見切れ対策: ヘッダー(60px) + 余白(10px) + ボタン・メッセージ(180px) = 250px
               // 大画面: calc(100vh - 240px) = メッセージ領域確保したプレイエリア

@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js';
-import { GAME_CONFIG } from '@shared/utils/constants';
+import { GAME_CONFIG, SPRITE_CONFIG, TIMING_CONFIG, PERFORMANCE_CONFIG, UI_CONFIG } from '@shared/utils/constants';
 import { playSound } from '../utils/assets';
 import spriteSheetUrl from '../assets/images/sprite_items.png';
 import { AppConfig } from '@shared/types';
@@ -17,14 +17,14 @@ interface Obstacle {
 }
 
 // スプライトシート設定
-const SPRITE_COLS = 7;
-const SPRITE_ROWS = 11;
-const PADDING_TOP = 13;
-const PADDING_LEFT = 16;
-const PADDING_RIGHT = 10;
-const PADDING_BOTTOM = 10;
-const USABLE_WIDTH = 1024 - PADDING_LEFT - PADDING_RIGHT;
-const USABLE_HEIGHT = 1536 - PADDING_TOP - PADDING_BOTTOM;
+const SPRITE_COLS = SPRITE_CONFIG.grid.cols;
+const SPRITE_ROWS = SPRITE_CONFIG.grid.rows;
+const PADDING_TOP = SPRITE_CONFIG.padding.top;
+const PADDING_LEFT = SPRITE_CONFIG.padding.left;
+const PADDING_RIGHT = SPRITE_CONFIG.padding.right;
+const PADDING_BOTTOM = SPRITE_CONFIG.padding.bottom;
+const USABLE_WIDTH = SPRITE_CONFIG.sheetSize.width - PADDING_LEFT - PADDING_RIGHT;
+const USABLE_HEIGHT = SPRITE_CONFIG.sheetSize.height - PADDING_TOP - PADDING_BOTTOM;
 const SPRITE_WIDTH = Math.floor(USABLE_WIDTH / SPRITE_COLS) - 2;
 const SPRITE_HEIGHT = Math.floor(USABLE_HEIGHT / SPRITE_ROWS) - 0;
 
@@ -33,12 +33,12 @@ const getSpriteX = (col: number) => PADDING_LEFT + col * SPRITE_WIDTH;
 const getSpriteY = (row: number) => PADDING_TOP + row * SPRITE_HEIGHT;
 
 // プレイヤー用スプライト座標
-const PLAYER_SPRITE = { x: getSpriteX(1), y: getSpriteY(4) };
+const PLAYER_SPRITE = { x: getSpriteX(SPRITE_CONFIG.sprites.player.col), y: getSpriteY(SPRITE_CONFIG.sprites.player.row) };
 // 敵用スプライト座標
-const ENEMY_SPRITE = { x: getSpriteX(0), y: getSpriteY(3) };
+const ENEMY_SPRITE = { x: getSpriteX(SPRITE_CONFIG.sprites.enemy.col), y: getSpriteY(SPRITE_CONFIG.sprites.enemy.row) };
 
-const LINE_COLOR = 0xCCCCCC; // 薄いグレー
-const LINE_THICKNESS = 2;
+const LINE_COLOR = UI_CONFIG.lineColor; // 薄いグレー
+const LINE_THICKNESS = UI_CONFIG.lineThickness;
 
 export class PixiGameEngine {
   private app: PIXI.Application;
@@ -211,8 +211,8 @@ export class PixiGameEngine {
 
     this.frameCount++;
 
-    // 5分ごとにメモリ管理を実行（60FPS想定で18000フレーム）
-    if (this.frameCount % 18000 === 0) {
+    // 5分ごとにメモリ管理を実行（60FPS想定でTIMING_CONFIG.gameMemoryCheckIntervalフレーム）
+    if (this.frameCount % TIMING_CONFIG.gameMemoryCheckInterval === 0) {
       this.performMemoryMaintenance();
     }
 
@@ -229,7 +229,7 @@ export class PixiGameEngine {
       }
 
       // 画面下端を超えた障害物を削除してスコア加算
-      if (obstacle.sprite.y > this.app.screen.height + 50) {
+      if (obstacle.sprite.y > this.app.screen.height + UI_CONFIG.obstacleOffscreenOffset) {
         this.app.stage.removeChild(obstacle.sprite);
         // 障害物を適切に破棄してメモリリークを防ぐ
         obstacle.sprite.destroy({ children: true });
@@ -243,12 +243,12 @@ export class PixiGameEngine {
     // トレイルの更新
     for (let i = this.trailGraphics.length - 1; i >= 0; i--) {
       const trail = this.trailGraphics[i];
-      trail.alpha -= 0.02; // 徐々に透明にする
-      trail.scale.x *= 0.98; // 徐々に小さくする
-      trail.scale.y *= 0.98;
+      trail.alpha -= PERFORMANCE_CONFIG.trailAlphaDecrement; // 徐々に透明にする
+      trail.scale.x *= PERFORMANCE_CONFIG.trailScaleDecrement; // 徐々に小さくする
+      trail.scale.y *= PERFORMANCE_CONFIG.trailScaleDecrement;
       trail.y += this.obstacleSpeed; // 下に移動
 
-      if (trail.alpha <= 0.01 || trail.y > this.app.screen.height + 50) {
+      if (trail.alpha <= PERFORMANCE_CONFIG.trailAlphaDecrement / 2 || trail.y > this.app.screen.height + UI_CONFIG.obstacleOffscreenOffset) {
         this.app.stage.removeChild(trail);
         trail.destroy();
         this.trailGraphics.splice(i, 1);
@@ -285,7 +285,7 @@ export class PixiGameEngine {
     
     const laneIndex = Math.floor(Math.random() * this.config.game.lane.count); // 0, 1, ..., lane.count - 1
     obstacle.x = this.lanes[laneIndex];
-    obstacle.y = -50;
+    obstacle.y = -UI_CONFIG.obstacleOffscreenOffset;
 
     this.app.stage.addChild(obstacle);
     this.obstacles.push({ sprite: obstacle, lane: laneIndex });
@@ -409,7 +409,7 @@ export class PixiGameEngine {
       if (!this.gameState.gameOver && !this.isDestroyed) {
         this.createTrailSegment(this.character.x, this.character.y);
       }
-    }, 300); // 0.3秒ごとに生成
+    }, TIMING_CONFIG.trailCreationInterval); // 0.3秒ごとに生成
   }
 
   private endGame(): void {
@@ -433,7 +433,7 @@ export class PixiGameEngine {
     });
     gameOverText.anchor.set(0.5);
     gameOverText.x = this.app.screen.width / 2;
-    gameOverText.y = this.app.screen.height / 2 - 50;
+    gameOverText.y = this.app.screen.height / 2 - UI_CONFIG.gameOverOffset;
     this.app.stage.addChild(gameOverText);
 
     // コールバック実行
@@ -536,7 +536,7 @@ export class PixiGameEngine {
     const now = Date.now();
     
     // 30分ごとにフレームカウンターをリセット（オーバーフロー対策）
-    if (now - this.lastGarbageCollection > 30 * 60 * 1000) {
+    if (now - this.lastGarbageCollection > PERFORMANCE_CONFIG.memoryMaintenanceInterval) {
       this.frameCount = 0;
       this.lastGarbageCollection = now;
     }
@@ -553,8 +553,8 @@ export class PixiGameEngine {
     }
 
     // Phase 6: 障害物数の最適化（メモリ保護強化）
-    if (this.obstacles.length > 80) {
-      const excessObstacles = this.obstacles.splice(40); // 最新40個を残して削除
+    if (this.obstacles.length > PERFORMANCE_CONFIG.maxObstacles) {
+      const excessObstacles = this.obstacles.splice(PERFORMANCE_CONFIG.obstacleCleanupThreshold); // 最新40個を残して削除
       excessObstacles.forEach(obstacle => {
         if (obstacle.sprite.parent) {
           this.app.stage.removeChild(obstacle.sprite);
@@ -655,17 +655,17 @@ export class PixiGameEngine {
     const now = Date.now();
     this.lastResizeTime = now;
     
-    // Phase 6: 最適化されたデバウンス処理（150ms）
+    // Phase 6: 最適化されたデバウンス処理（TIMING_CONFIG.resizeDebounceDelay ms）
     if (this.resizeDebounceTimer) {
       clearTimeout(this.resizeDebounceTimer);
     }
     
     this.resizeDebounceTimer = setTimeout(() => {
-      // 最新のリサイズから150ms経過後に実行（パフォーマンス最適化）
-      if (Date.now() - this.lastResizeTime >= 150) {
+      // 最新のリサイズから指定時間経過後に実行（パフォーマンス最適化）
+      if (Date.now() - this.lastResizeTime >= TIMING_CONFIG.resizeDebounceDelay) {
         this.onResizeComplete();
       }
-    }, 150);
+    }, TIMING_CONFIG.resizeDebounceDelay);
   }
 
   private onResizeComplete(): void {
@@ -791,9 +791,9 @@ export class PixiGameEngine {
     }
   }
 
-  // キャラクターY位置を動的に計算（プレイエリア下端から15%の位置）
+  // キャラクターY位置を動的に計算（プレイエリア下端から指定%の位置）
   private calculateCharacterY(): number {
     const canvasHeight = this.app.screen.height;
-    return canvasHeight * 0.85; // 下端から15%の位置
+    return canvasHeight * UI_CONFIG.characterYPosition; // 下端から指定%の位置
   }
 }

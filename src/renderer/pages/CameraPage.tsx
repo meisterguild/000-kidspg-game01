@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { NICKNAME_OPTIONS, CAMERA_CONFIG } from '@shared/utils/constants';
+import { NICKNAME_OPTIONS, CAMERA_CONFIG, TIMING_CONFIG, WINDOW_CONFIG } from '@shared/utils/constants';
 import { useImageResize } from '../hooks/useImageResize';
 import { playSound } from '../utils/assets';
 import { useScreen } from '../contexts/ScreenContext';
@@ -33,7 +33,7 @@ const CameraPage: React.FC = () => {
       
       
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 640, height: 480 } 
+        video: { width: WINDOW_CONFIG.video.width, height: WINDOW_CONFIG.video.height } 
       });
       streamRef.current = mediaStream;
       if (videoRef.current) {
@@ -77,7 +77,7 @@ const CameraPage: React.FC = () => {
     if (!isPhotoTaken) {
       const timer = setTimeout(() => {
         startCamera();
-      }, 500);
+      }, TIMING_CONFIG.cameraStartDelay);
       return () => clearTimeout(timer);
     }
     return () => stopCamera();
