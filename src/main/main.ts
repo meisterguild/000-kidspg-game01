@@ -187,14 +187,23 @@ class ElectronApp {
             await fs.writeFile(imageGeneratePath, JSON.stringify(workflowTemplate, null, 2));
             console.log(`Created image_generate.json with processed workflow: ${imageGeneratePath}`);
 
-            // ComfyUIが有効な場合、即座に画像をアップロード
+            // ComfyUIが有効な場合、即座に画像をアップロード＆変換開始
             if (this.comfyUIService) {
               try {
-                console.log(`Starting pre-upload for datetime: ${dateTime}`);
+                console.log(`Starting pre-upload and transform for datetime: ${dateTime}`);
+                // 1. プリアップロード
                 await this.comfyUIService.preUploadImage(base64Data, dateTime);
                 console.log(`Pre-upload completed for datetime: ${dateTime}`);
+                
+                // 2. 即座に変換開始
+                const jobId = await this.comfyUIService.transformImage({
+                  imageData: base64Data,
+                  datetime: dateTime,
+                  resultDir: dirPath
+                });
+                console.log(`ComfyUI transformation started immediately: ${jobId} for ${dateTime}`);
               } catch (error) {
-                console.warn('Pre-upload failed, will upload during conversion:', error);
+                console.warn('Pre-upload or transform failed, will handle later:', error);
               }
             }
           } catch (error) {
@@ -320,6 +329,21 @@ class ElectronApp {
       } catch (error) {
         console.error('ComfyUI active jobs check failed:', error);
         return { success: false, jobs: [] };
+      }
+    });
+
+    // ComfyUIジョブキャンセル
+    ipcMain.handle('comfyui-cancel-job', async (event, datetime: string) => {
+      try {
+        if (!this.comfyUIService) {
+          return { success: false, error: 'ComfyUI service not initialized' };
+        }
+
+        const canceled = await this.comfyUIService.cancelJob(datetime);
+        return { success: canceled };
+      } catch (error) {
+        console.error('ComfyUI job cancel failed:', error);
+        return { success: false, error: String(error) };
       }
     });
   }

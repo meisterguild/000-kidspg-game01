@@ -47,6 +47,7 @@ export class PixiGameEngine {
   private spriteTexture: PIXI.Texture | null = null;
   private obstacles: Obstacle[] = [];
   private gameOverCallback?: (score: number) => void;
+  private escapeCallback?: () => void;
   private obstacleCreationTimer?: number;
   private obstacleSpeed: number;
   private obstacleCreationInterval: number;
@@ -351,18 +352,28 @@ export class PixiGameEngine {
 
   private setupKeyboardControls(): void {
     this.keyboardHandler = (event: KeyboardEvent) => {
-      if (this.gameState.gameOver || this.isDestroyed) return;
+      if (this.gameState.gameOver || this.isDestroyed) {
+        return;
+      }
+
+      // Escキーを最初にチェック
+      if (event.key === 'Escape' || event.code === 'Escape' || event.keyCode === 27) {
+        if (this.escapeCallback) {
+          this.escapeCallback();
+        }
+        return;
+      }
 
       switch (event.key) {
         case 'ArrowLeft':
-          if (this.gameState.currentLane > 0) {  // 配列の最初のインデックス（左レーン）
+          if (this.gameState.currentLane > 0) {
             this.gameState.currentLane--;
             this.updateCharacterPosition();
             playSound('jump', 0.5);
           }
           break;
         case 'ArrowRight':
-          if (this.gameState.currentLane < this.config.game.lane.count - 1) {  // 配列の最後のインデックス（右レーン）
+          if (this.gameState.currentLane < this.config.game.lane.count - 1) {
             this.gameState.currentLane++;
             this.updateCharacterPosition();
             playSound('jump', 0.5);
@@ -444,6 +455,10 @@ export class PixiGameEngine {
 
   public setGameOverCallback(callback: (score: number) => void): void {
     this.gameOverCallback = callback;
+  }
+
+  public setEscapeCallback(callback: () => void): void {
+    this.escapeCallback = callback;
   }
 
   public destroy(): void {

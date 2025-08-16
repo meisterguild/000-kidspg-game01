@@ -3,11 +3,13 @@ import { PixiGameEngine } from '../game/PixiGameEngine';
 import { isPixiAssetsPreloaded, playSound } from '../utils/assets';
 import { useGameSession } from '../contexts/GameSessionContext';
 import { useConfig } from '../contexts/ConfigContext';
+import { useScreen } from '../contexts/ScreenContext';
 import { WINDOW_CONFIG } from '@shared/utils/constants';
 
 const GamePage: React.FC = () => {
-  const { handleGameEnd } = useGameSession();
+  const { handleGameEnd, resultDir, resetGameState } = useGameSession();
   const { config, loading: configLoading, error: configError } = useConfig();
+  const { setCurrentScreen } = useScreen();
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const gameEngineRef = useRef<PixiGameEngine | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -32,6 +34,23 @@ const GamePage: React.FC = () => {
       document.documentElement.style.overflow = originalHtmlOverflow;
     };
   }, []);
+
+  // Escキーでゲーム中断・ComfyUIキャンセル処理
+  const handleEscapeKey = useCallback(async () => {
+    // ComfyUIジョブをキャンセル
+    if (resultDir && window.electronAPI?.comfyui) {
+      try {
+        const dirName = resultDir.split(/[/\\]/).pop() || '';
+        await window.electronAPI.comfyui.cancelJob(dirName);
+      } catch (error) {
+        console.warn('Failed to cancel ComfyUI job:', error);
+      }
+    }
+    
+    // ゲーム状態をリセットしてTOP画面に戻る
+    resetGameState();
+    setCurrentScreen('TOP');
+  }, [resultDir, resetGameState, setCurrentScreen]);
 
   // ゲームエンジンへの入力送信
   const handleMoveLeft = useCallback(() => {
@@ -127,6 +146,12 @@ const GamePage: React.FC = () => {
           }
         });
 
+        gameEngine.setEscapeCallback(() => {
+          if (!abortController.signal.aborted) {
+            handleEscapeKey();
+          }
+        });
+
         gameEngineRef.current = gameEngine;
         
         // スコア・レベル更新のポーリング開始
@@ -166,7 +191,7 @@ const GamePage: React.FC = () => {
         gameEngineRef.current = null;
       }
     };
-  }, [handleGameEnd, config, configError, configLoading]);
+  }, [handleGameEnd, config, configError, configLoading, handleEscapeKey]);
 
   return (
     <div className="relative min-h-screen" style={{ overflow: 'hidden' }}>

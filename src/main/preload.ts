@@ -35,6 +35,8 @@ const electronAPI = {
     getStatus: (): Promise<ComfyUIStatusResult> => ipcRenderer.invoke('comfyui-status'),
     healthCheck: (): Promise<ComfyUIHealthResult> => ipcRenderer.invoke('comfyui-health-check'),
     getActiveJobs: (): Promise<ComfyUIJobsResult> => ipcRenderer.invoke('comfyui-active-jobs'),
+    cancelJob: (datetime: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('comfyui-cancel-job', datetime),
     onJobQueued: (callback: ComfyUIEventCallback) => {
       ipcRenderer.on('comfyui-job-queued', (_, data) => callback(data));
     },

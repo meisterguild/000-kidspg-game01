@@ -280,6 +280,96 @@ class ComfyUIWorker {
     }
   }
 
+  async cancelJob(datetime: string): Promise<void> {
+    console.log(`ComfyUI Worker - Canceling job for datetime: ${datetime}`);
+    
+    // キューから削除
+    const queueIndex = this.jobQueue.findIndex(job => job.datetime === datetime);
+    if (queueIndex !== -1) {
+      this.jobQueue.splice(queueIndex, 1);
+      console.log(`ComfyUI Worker - Job removed from internal queue: ${datetime}`);
+    }
+    
+    // アクティブジョブから削除し、ComfyUIサーバーからも削除
+    const activeJob = this.activeJobs.get(datetime);
+    if (activeJob) {
+      console.log(`ComfyUI Worker - Found active job to cancel: ${activeJob.promptId}`);
+      try {
+        // ComfyUIサーバーのキューから削除
+        await this.cancelJobOnServer(activeJob.promptId);
+        console.log(`ComfyUI Worker - Job canceled on server: ${activeJob.promptId}`);
+      } catch (error) {
+        console.warn(`ComfyUI Worker - Failed to cancel job on server: ${error}`);
+      }
+      
+      this.activeJobs.delete(datetime);
+      console.log(`ComfyUI Worker - Active job canceled: ${datetime}`);
+    } else {
+      console.log(`ComfyUI Worker - No active job found for datetime: ${datetime}`);
+    }
+    
+    this.sendJobProgress(datetime, 'job-canceled', { 
+      message: 'ジョブがキャンセルされました' 
+    });
+  }
+
+  private async cancelJobOnServer(promptId: string): Promise<void> {
+    try {
+      console.log(`ComfyUI Worker - Attempting to cancel job on server: ${promptId}`);
+      
+      // まず現在のキューを取得
+      const queueResponse = await electronFetch(`${this.config.baseUrl}/queue`);
+      if (!queueResponse.ok) {
+        throw new Error(`Failed to get queue: ${queueResponse.status}`);
+      }
+      
+      const queueData = await queueResponse.json() as ComfyUIQueueResponse;
+      
+      // キューにジョブが存在するかチェック
+      const allJobs = [...(queueData.queue_running || []), ...(queueData.queue_pending || [])];
+      const jobExists = allJobs.some(([, id]) => id === promptId);
+      
+      if (jobExists) {
+        console.log(`ComfyUI Worker - Job found in server queue, deleting: ${promptId}`);
+        
+        // キューからジョブを削除
+        const deleteResponse = await electronFetch(`${this.config.baseUrl}/queue`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            delete: [promptId]
+          })
+        });
+        
+        if (!deleteResponse.ok) {
+          throw new Error(`Failed to delete from queue: ${deleteResponse.status}`);
+        }
+        
+        console.log(`ComfyUI Worker - Successfully deleted job from server queue: ${promptId}`);
+      } else {
+        console.log(`ComfyUI Worker - Job not found in server queue (may have already completed): ${promptId}`);
+      }
+      
+      // 実行中の場合は割り込み処理も試行
+      if (queueData.queue_running?.some(([, id]) => id === promptId)) {
+        console.log(`ComfyUI Worker - Job is running, sending interrupt: ${promptId}`);
+        const interruptResponse = await electronFetch(`${this.config.baseUrl}/interrupt`, {
+          method: 'POST'
+        });
+        
+        if (interruptResponse.ok) {
+          console.log(`ComfyUI Worker - Interrupt sent successfully for: ${promptId}`);
+        } else {
+          console.warn(`ComfyUI Worker - Failed to send interrupt: ${interruptResponse.status}`);
+        }
+      }
+      
+    } catch (error) {
+      console.error(`ComfyUI Worker - Error canceling job on server:`, error);
+      throw error;
+    }
+  }
+
   private async processQueue(): Promise<void> {
     console.log(`ComfyUI Worker - processQueue called - isProcessing: ${this.isProcessing}, queueLength: ${this.jobQueue.length}, activeJobs: ${this.activeJobs.size}, maxConcurrent: ${this.config.maxConcurrentJobs}`);
     
@@ -699,6 +789,16 @@ parentPort?.on('message', async (message: WorkerMessage) => {
           await worker.addJob(jobData);
         } else {
           console.error('ComfyUI Worker - Worker not initialized for add-job');
+        }
+        break;
+
+      case 'cancel-job':
+        if (worker) {
+          const { datetime } = data as { datetime: string };
+          console.log(`ComfyUI Worker - Canceling job: ${datetime}`);
+          await worker.cancelJob(datetime);
+        } else {
+          console.error('ComfyUI Worker - Worker not initialized for cancel-job');
         }
         break;
 

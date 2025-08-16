@@ -22,7 +22,6 @@ const ResultPage: React.FC = () => {
   const [rank, setRank] = useState<GameRank | '' >('');
   const { saveGameResult, isSaving: isSavingHook, error: saveError } = useSaveGameResult();
   const [autoRestartTimer, setAutoRestartTimer] = useState(30);
-  const [comfyUIExecuted, setComfyUIExecuted] = useState(false);
 
   const handleRestart = useCallback(() => {
     resetGameState();
@@ -60,31 +59,8 @@ const ResultPage: React.FC = () => {
 
         const resultSave = await saveGameResult(resultDir, gameResult);
         if (resultSave.success) {
-          // 保存成功後、ComfyUI変換を開始（設定が有効で未実行の場合のみ）
-          console.log('ComfyUI check - config.comfyui:', !!config.comfyui, 'capturedImage:', !!capturedImage, 'comfyUIExecuted:', comfyUIExecuted);
-          if (config.comfyui && capturedImage && !comfyUIExecuted) {
-            setComfyUIExecuted(true);
-            try {
-              // resultDirから正しい日時フォーマットを抽出
-              const dirName = resultDir.split(/[/\\]/).pop() || '';
-              console.log('Starting ComfyUI transformation...', { dirName, resultDir });
-              const transformResult = await window.electronAPI.comfyui.transform(
-                capturedImage,
-                dirName,
-                resultDir
-              );
-              
-              if (transformResult.success) {
-                console.log('ComfyUI transformation queued:', transformResult.jobId);
-              } else {
-                console.warn('ComfyUI transformation failed:', transformResult.error);
-              }
-            } catch (error) {
-              console.warn('ComfyUI transformation error:', error);
-            }
-          } else {
-            console.log('ComfyUI transformation skipped - conditions not met');
-          }
+          // ComfyUI変換は写真保存時に既に開始されているため、ここでは実行しない
+          console.log('Result saved successfully. ComfyUI transformation was already started during photo save.');
         } else {
           console.error('結果保存エラー:', saveError || resultSave.error);
           alert(`結果の保存に失敗しました: ${saveError || resultSave.error}`);
@@ -96,7 +72,7 @@ const ResultPage: React.FC = () => {
     };
 
     performSave();
-  }, [gameScore, selectedNickname, resultDir, isSavingHook, saveError, saveGameResult, config, comfyUIExecuted, capturedImage]);
+  }, [gameScore, selectedNickname, resultDir, isSavingHook, saveError, saveGameResult, config, capturedImage]);
 
   useEffect(() => {
     const countdown = setInterval(() => {

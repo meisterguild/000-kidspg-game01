@@ -164,6 +164,12 @@ export class ComfyUIService {
         this.sendToRenderer('comfyui-job-error', data);
         break;
 
+      case 'job-canceled':
+        this.updateJobStatus((data as ComfyUIJobProgressData).jobId, 'error'); // canceledをerrorとして扱う
+        this.sendToRenderer('comfyui-job-canceled', data);
+        console.log('ComfyUIService - Job canceled:', (data as ComfyUIJobProgressData).jobId);
+        break;
+
       case 'status':
         this.sendToRenderer('comfyui-status', data);
         break;
@@ -320,6 +326,41 @@ export class ComfyUIService {
       status: job.status,
       duration: Date.now() - job.startTime
     }));
+  }
+
+  async cancelJob(datetime: string): Promise<boolean> {
+    if (!this.worker) {
+      console.log(`ComfyUI Service - Worker not initialized, cannot cancel job: ${datetime}`);
+      return false;
+    }
+
+    console.log(`ComfyUI Service - Canceling job for datetime: ${datetime}`);
+    
+    // アクティブジョブから削除
+    const job = this.activeJobs.get(datetime);
+    if (job) {
+      console.log(`ComfyUI Service - Found active job to cancel: ${JSON.stringify(job)}`);
+      this.activeJobs.delete(datetime);
+      console.log(`ComfyUI Service - Job canceled and removed: ${datetime}`);
+    } else {
+      console.log(`ComfyUI Service - No active job found for datetime: ${datetime}`);
+      console.log(`ComfyUI Service - Current active jobs: ${JSON.stringify(Array.from(this.activeJobs.keys()))}`);
+    }
+
+    // プリアップロード済み画像も削除
+    if (this.preUploadedImages.has(datetime)) {
+      this.preUploadedImages.delete(datetime);
+      console.log(`ComfyUI Service - Pre-uploaded image removed: ${datetime}`);
+    }
+
+    // Workerにキャンセル通知（サーバー側のキューからも削除）
+    console.log(`ComfyUI Service - Sending cancel message to worker for datetime: ${datetime}`);
+    this.worker.postMessage({
+      type: 'cancel-job',
+      data: { datetime }
+    });
+
+    return true;
   }
 
   async destroy(): Promise<void> {

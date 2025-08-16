@@ -39,6 +39,11 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // ゲーム中はEscキーの処理をGamePageに委譲
+        if (currentScreen === 'GAME') {
+          return;
+        }
+        
         playSound('paltu');
         setCurrentScreen('TOP');
         resetGameState();
@@ -49,7 +54,7 @@ const AppContent: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setCurrentScreen, resetGameState]);
+  }, [setCurrentScreen, resetGameState, currentScreen]);
 
   // アセット読み込み中の表示
   if (!assetsLoaded || configLoading) {
