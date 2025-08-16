@@ -50,6 +50,11 @@ export interface AppConfig {
       outputPrefix: string;
     };
   };
+  memorialCard?: {
+    enabled: boolean;
+    magickTimeout: number;
+    cardBaseImagesDir: string;
+  };
 }
 
 // カメラ撮影用の型定義

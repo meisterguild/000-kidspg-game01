@@ -49,5 +49,14 @@
       "templatePath": "assets/ComfyUI_KidsPG_02.json",
       "outputPrefix": "photo_anime"
     }
+  },
+  "_comment_memorial_card_settings": "記念カード画像合成システム設定",
+  "memorialCard": {
+    "_comment_enabled": "記念カード生成機能の有効/無効",
+    "enabled": true,
+    "_comment_magick_timeout": "ImageMagick実行タイムアウト（ミリ秒）",
+    "magickTimeout": 60000,
+    "_comment_card_base_images_dir": "背景カード画像ディレクトリ",
+    "cardBaseImagesDir": "card_base_images"
   }
 }

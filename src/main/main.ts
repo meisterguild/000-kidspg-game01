@@ -331,7 +331,13 @@ class ElectronApp {
         return;
       }
 
-      this.comfyUIService = new ComfyUIService(this.config.comfyui, this.mainWindow || undefined);
+      // 記念カード設定も含めてComfyUIServiceを初期化
+      const memorialCardConfig = this.config.memorialCard;
+      this.comfyUIService = new ComfyUIService(
+        this.config.comfyui, 
+        memorialCardConfig, 
+        this.mainWindow || undefined
+      );
       await this.comfyUIService.initialize();
       console.log('ComfyUI Service initialized successfully');
     } catch (error) {

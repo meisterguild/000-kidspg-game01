@@ -3,6 +3,7 @@ import * as path from 'path';
 import { BrowserWindow } from 'electron';
 import type { ComfyUIJobProgressData, ComfyUIStatus } from '@shared/types/comfyui';
 import { TIMING_CONFIG } from '../../shared/utils/constants';
+import { MemorialCardService, type MemorialCardConfig } from './memorial-card-service';
 
 interface ComfyUIJobRequest {
   imageData: string;
@@ -40,10 +41,16 @@ export class ComfyUIService {
     startTime: number;
   }>();
   private preUploadedImages = new Map<string, string>(); // datetime -> uploaded filename
+  private memorialCardService: MemorialCardService | null = null;
 
-  constructor(config: ComfyUIConfig, mainWindow?: BrowserWindow) {
+  constructor(config: ComfyUIConfig, memorialCardConfig?: MemorialCardConfig, mainWindow?: BrowserWindow) {
     this.config = config;
     this.mainWindow = mainWindow || null;
+    
+    // 記念カードサービスの初期化
+    if (memorialCardConfig) {
+      this.memorialCardService = new MemorialCardService(memorialCardConfig, mainWindow);
+    }
   }
 
   async initialize(): Promise<void> {
@@ -134,10 +141,23 @@ export class ComfyUIService {
         this.sendToRenderer('comfyui-job-queue-update', data);
         break;
 
-      case 'job-completed':
+      case 'job-completed': {
         this.updateJobStatus((data as ComfyUIJobProgressData).jobId, 'completed');
         this.sendToRenderer('comfyui-job-completed', data);
+        
+        // 記念カード生成をトリガー
+        const jobData = data as ComfyUIJobProgressData;
+        const job = this.activeJobs.get(jobData.jobId);
+        if (job && this.memorialCardService) {
+          console.log(`ComfyUIService - Triggering memorial card generation for: ${jobData.jobId}`);
+          // 非同期で記念カード生成を実行（ComfyUIの処理をブロックしない）
+          this.memorialCardService.handleComfyUICompletion(jobData.jobId, job.resultDir)
+            .catch(error => {
+              console.error('ComfyUIService - Memorial card generation error:', error);
+            });
+        }
         break;
+      }
 
       case 'job-error':
         this.updateJobStatus((data as ComfyUIJobProgressData).jobId, 'error');
