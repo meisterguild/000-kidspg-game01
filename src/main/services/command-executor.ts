@@ -25,7 +25,6 @@ export class CommandExecutor {
   async executeMagickScript(scriptPath: string): Promise<ExecutionResult> {
     const startTime = Date.now();
     
-    console.log(`CommandExecutor - Executing magick script: ${scriptPath}`);
     
     try {
       const normalizedScriptPath = this.normalizePathForWindows(scriptPath);
@@ -49,7 +48,6 @@ export class CommandExecutor {
     const startTime = Date.now();
     
     return new Promise((resolve) => {
-      console.log(`CommandExecutor - Running command: ${command} ${args.join(' ')}`);
       
       const process = spawn(command, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -63,12 +61,10 @@ export class CommandExecutor {
       // タイムアウト設定
       const timeoutId = setTimeout(() => {
         if (!isResolved) {
-          console.log('CommandExecutor - Command timeout, killing process');
           process.kill('SIGTERM');
           
           setTimeout(() => {
             if (!process.killed) {
-              console.log('CommandExecutor - Force killing process with SIGKILL');
               process.kill('SIGKILL');
             }
           }, 5000);
@@ -88,13 +84,11 @@ export class CommandExecutor {
       process.stdout?.on('data', (data) => {
         const chunk = data.toString();
         stdout += chunk;
-        console.log(`CommandExecutor - stdout: ${chunk.trim()}`);
       });
 
       process.stderr?.on('data', (data) => {
         const chunk = data.toString();
         stderr += chunk;
-        console.log(`CommandExecutor - stderr: ${chunk.trim()}`);
       });
 
       // プロセス終了処理
@@ -104,7 +98,6 @@ export class CommandExecutor {
           isResolved = true;
           
           const duration = Date.now() - startTime;
-          console.log(`CommandExecutor - Command finished with code: ${code}, duration: ${duration}ms`);
           
           resolve({
             success: code === 0,

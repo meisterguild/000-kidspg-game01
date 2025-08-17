@@ -22,6 +22,7 @@ const ResultPage: React.FC = () => {
   const [rank, setRank] = useState<GameRank | '' >('');
   const { saveGameResult, isSaving: isSavingHook, error: saveError } = useSaveGameResult();
   const [autoRestartTimer, setAutoRestartTimer] = useState(30);
+  const [hasSaved, setHasSaved] = useState(false);
 
   const handleRestart = useCallback(() => {
     resetGameState();
@@ -35,13 +36,16 @@ const ResultPage: React.FC = () => {
     const rankValue = calculateRank(gameScore);
     setLevel(levelValue);
     setRank(rankValue);
+  }, [gameScore, config]);
 
+  useEffect(() => {
     const performSave = async () => {
-      if (!resultDir || isSavingHook) {
+      if (!resultDir || isSavingHook || hasSaved || !selectedNickname || level === '' || rank === '') {
         return;
       }
 
       try {
+        setHasSaved(true);
         const timestamp = generateJSTTimestamp();
 
         // resultDirから日時を抽出してphotoファイル名を作成
@@ -50,8 +54,8 @@ const ResultPage: React.FC = () => {
 
         const gameResult: GameResult = {
           nickname: selectedNickname,
-          rank: rankValue,
-          level: levelValue,
+          rank: rank,
+          level: level,
           score: gameScore,
           timestampJST: timestamp,
           imagePath: photoFileName,
@@ -64,15 +68,17 @@ const ResultPage: React.FC = () => {
         } else {
           console.error('結果保存エラー:', saveError || resultSave.error);
           alert(`結果の保存に失敗しました: ${saveError || resultSave.error}`);
+          setHasSaved(false); // 失敗時はリトライ可能にする
         }
       } catch (error) {
         console.error('結果保存中にエラーが発生しました:', error);
         alert(`結果の保存中にエラーが発生しました: ${error}`);
+        setHasSaved(false); // 失敗時はリトライ可能にする
       }
     };
 
     performSave();
-  }, [gameScore, selectedNickname, resultDir, isSavingHook, saveError, saveGameResult, config, capturedImage]);
+  }, [resultDir, selectedNickname, level, rank, gameScore, hasSaved, isSavingHook, saveError, saveGameResult]);
 
   useEffect(() => {
     const countdown = setInterval(() => {
@@ -135,8 +141,8 @@ const ResultPage: React.FC = () => {
         >
           おしまい (Space)
         </button>
-        <p className="text-gray-400">{autoRestartTimer}秒後に自動的にトップ画面に戻ります</p>
-        <p className="text-sm text-gray-500">Escキーでいつでもトップに戻れます</p>
+        <p className="text-gray-400">{autoRestartTimer}秒後に自動でトップにもどります</p>
+        <p className="text-sm text-gray-500">Escキーでいつでもトップにもどれます</p>
       </div>
     </div>
   );

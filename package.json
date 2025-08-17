@@ -76,12 +76,21 @@
       "output": "release"
     },
     "files": [
-      "dist/**/*",
-      "dist/renderer/assets/**/*",
-      "assets/**/*",
-      "public/**/*",
-      "node_modules/**/*",
-      "package.json"
+      "dist/**/*"
+    ],
+    "extraFiles": [
+      {
+        "from": "config.json",
+        "to": "."
+      },
+      {
+        "from": "assets",
+        "to": "assets"
+      },
+      {
+        "from": "card_base_images",
+        "to": "card_base_images"
+      }
     ],
     "mac": {
       "category": "public.app-category.games",

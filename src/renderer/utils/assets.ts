@@ -1,6 +1,6 @@
-// アセット管理システム
-import type { AssetKey } from '@shared/utils/constants';
 import { TIMING_CONFIG } from '@shared/utils/constants';
+import * as PIXI from 'pixi.js'; // eslint-disable-line @typescript-eslint/no-unused-vars
+import type { AssetKey } from '@shared/utils/constants';
 
 export interface AssetManager {
   sounds: Record<string, HTMLAudioElement>;
@@ -8,30 +8,104 @@ export interface AssetManager {
   isLoaded: boolean;
 }
 
-// 音声ファイルの定義
-export const SOUND_ASSETS = {
-  action: new URL('../assets/sounds/action.mp3', import.meta.url).href,
-  bell: new URL('../assets/sounds/bell.mp3', import.meta.url).href,
-  buttonClick: new URL('../assets/sounds/button_click.mp3', import.meta.url).href,
-  jump: new URL('../assets/sounds/jump.mp3', import.meta.url).href,
-  machine: new URL('../assets/sounds/machine.mp3', import.meta.url).href,
-  newtype: new URL('../assets/sounds/newtype.mp3', import.meta.url).href,
-  ng: new URL('../assets/sounds/ng.mp3', import.meta.url).href,
-  paltu: new URL('../assets/sounds/paltu.mp3', import.meta.url).href,
-  screenChange: new URL('../assets/sounds/screen_change.mp3', import.meta.url).href,
-  sound7: new URL('../assets/sounds/sound7.mp3', import.meta.url).href
+export const getSoundAssetPath = async (key: keyof typeof SOUND_ASSET_RELATIVE_PATHS): Promise<string> => {
+  const relativePath = SOUND_ASSET_RELATIVE_PATHS[key];
+    if (import.meta.env.PROD) {
+      const electronApi = window.electronAPI;
+      return await electronApi.getAssetAbsolutePath(`assets/sounds/${relativePath}`);
+    } else {
+      return new URL(`../assets/sounds/${relativePath}`, import.meta.url).href;
+    }
+  };
+
+export const getImageAssetPath = async (key: keyof typeof IMAGE_ASSET_RELATIVE_PATHS): Promise<string> => {
+  console.log('assets.ts: getImageAssetPath called with key:', key);
+  
+  const relativePath = IMAGE_ASSET_RELATIVE_PATHS[key];
+  console.log('assets.ts: Relative path for key:', relativePath);
+  
+  if (import.meta.env.PROD) {
+    console.log('assets.ts: Production environment detected');
+    console.log('assets.ts: Checking for electronAPI availability...');
+    
+    const electronApi = window.electronAPI;
+    if (!electronApi) {
+      console.error('assets.ts: CRITICAL - electronAPI is not available!');
+      throw new Error('electronAPI is not available in production environment');
+    }
+    
+    if (!electronApi.getAssetAbsolutePath) {
+      console.error('assets.ts: CRITICAL - getAssetAbsolutePath method is not available!');
+      throw new Error('getAssetAbsolutePath method is not available');
+    }
+    
+    const assetRelativePath = `assets/images/${relativePath}`;
+    console.log('assets.ts: Calling electronAPI.getAssetAbsolutePath with:', assetRelativePath);
+    
+    try {
+      const absolutePath = await electronApi.getAssetAbsolutePath(assetRelativePath);
+      console.log('assets.ts: Absolute path resolved:', absolutePath);
+      
+      // PixiJS読み込み用のパス形式を決定
+      if (typeof absolutePath === 'string') {
+        // まずは直接パスを返す（Electronの場合、これが最も確実）
+        console.log('assets.ts: Returning direct path for Electron:', absolutePath);
+        return absolutePath;
+        
+        // 以下はfile://プロトコルの代替案（コメントアウト）
+        // if (absolutePath.includes('\\')) {
+        //   // Windows パスの場合、file:// プロトコルを付与
+        //   const fileUrl = `file:///${absolutePath.replace(/\\/g, '/')}`;
+        //   console.log('assets.ts: Converted to file URL:', fileUrl);
+        //   return fileUrl;
+        // }
+      }
+      
+      return absolutePath;
+    } catch (error) {
+      console.error('assets.ts: CRITICAL - electronAPI.getAssetAbsolutePath failed:', error);
+      throw error;
+    }
+  } else {
+    console.log('assets.ts: Development environment detected');
+    const url = new URL(`../assets/images/${relativePath}`, import.meta.url).href;
+    console.log('assets.ts: Development URL generated:', url);
+    return url;
+  }
+};
+
+const SOUND_ASSET_RELATIVE_PATHS = {
+  action: 'action.mp3',
+  bell: 'bell.mp3',
+  buttonClick: 'button_click.mp3',
+  jump: 'jump.mp3',
+  machine: 'machine.mp3',
+  newtype: 'newtype.mp3',
+  ng: 'ng.mp3',
+  paltu: 'paltu.mp3',
+  screenChange: 'screen_change.mp3',
+  sound7: 'sound7.mp3'
 } as const;
 
-// 画像ファイルの定義
-export const IMAGE_ASSETS = {
-  spriteItems: new URL('../assets/images/sprite_items.png', import.meta.url).href,
-  titleImage01: new URL('../assets/images/title_image_01.png', import.meta.url).href,
-  titleImage02: new URL('../assets/images/title_image_02.png', import.meta.url).href,
-  titleImage03: new URL('../assets/images/title_image_03.png', import.meta.url).href,
-  titleImage04: new URL('../assets/images/title_image_04.png', import.meta.url).href
+const IMAGE_ASSET_RELATIVE_PATHS = {
+  spriteItems: 'sprite_items.png',
+  titleImage01: 'title_image_01.png',
+  titleImage02: 'title_image_02.png',
+  titleImage03: 'title_image_03.png',
+  titleImage04: 'title_image_04.png'
 } as const;
 
-// グローバルアセットマネージャー
+// 画像パスオブジェクトを非同期で取得する関数
+export const getImageAssets = async () => {
+  return {
+    titleImage01: await getImageAssetPath('titleImage01'),
+    titleImage02: await getImageAssetPath('titleImage02'),
+    titleImage03: await getImageAssetPath('titleImage03'),
+    titleImage04: await getImageAssetPath('titleImage04'),
+    spriteItems: await getImageAssetPath('spriteItems')
+  } as const;
+};
+
 let globalAssetManager: AssetManager | null = null;
 
 // アセットローダー関数
@@ -47,16 +121,16 @@ export const loadAssets = async (): Promise<AssetManager> => {
   };
 
   try {
-    // 音声ファイルの読み込み
-    const soundPromises = Object.entries(SOUND_ASSETS).map(async ([key, path]) => {
+    const soundPromises = Object.entries(SOUND_ASSET_RELATIVE_PATHS).map(async ([key, _]) => {
+      const path = await getSoundAssetPath(key as keyof typeof SOUND_ASSET_RELATIVE_PATHS);
       const audio = new Audio();
       audio.preload = 'auto';
-      audio.volume = 0.7; // デフォルト音量
+      audio.volume = 0.7;
       
       return new Promise<void>((resolve, _reject) => {
         const timeoutId = setTimeout(() => {
           console.warn(`音声ファイルの読み込みがタイムアウトしました: ${path}`);
-          resolve(); // タイムアウトでもエラーにしない
+          resolve();
         }, 10000);
 
         audio.addEventListener('canplaythrough', () => {
@@ -74,22 +148,22 @@ export const loadAssets = async (): Promise<AssetManager> => {
         audio.addEventListener('error', (e) => {
           clearTimeout(timeoutId);
           console.error(`音声ファイルの読み込みに失敗しました: ${path}`, e);
-          resolve(); // エラーでも続行
+          resolve();
         });
 
         audio.src = path;
-        audio.load(); // 明示的に読み込み開始
+        audio.load();
       });
     });
 
-    // 画像ファイルの読み込み
-    const imagePromises = Object.entries(IMAGE_ASSETS).map(async ([key, path]) => {
+    const imagePromises = Object.entries(IMAGE_ASSET_RELATIVE_PATHS).map(async ([key, _]) => {
+      const path = await getImageAssetPath(key as keyof typeof IMAGE_ASSET_RELATIVE_PATHS);
       const img = new Image();
-      
+
       return new Promise<void>((resolve, _reject) => {
         const timeoutId = setTimeout(() => {
           console.warn(`画像ファイルの読み込みがタイムアウトしました: ${path}`);
-          resolve(); // タイムアウトでもエラーにしない
+          resolve();
         }, TIMING_CONFIG.comfyuiTimeout);
 
         img.onload = () => {
@@ -101,14 +175,13 @@ export const loadAssets = async (): Promise<AssetManager> => {
         img.onerror = (e) => {
           clearTimeout(timeoutId);
           console.warn(`画像ファイルの読み込みに失敗しました: ${path}`, e);
-          resolve(); // エラーでも続行
+          resolve();
         };
 
         img.src = path;
       });
     });
 
-    // すべてのアセットの読み込みを待つ
     await Promise.all([...soundPromises, ...imagePromises]);
     
     assetManager.isLoaded = true;
@@ -119,7 +192,7 @@ export const loadAssets = async (): Promise<AssetManager> => {
 
   } catch (error) {
     console.error('アセット読み込みエラー:', error);
-    assetManager.isLoaded = true; // エラーでも続行を許可
+    assetManager.isLoaded = true;
     globalAssetManager = assetManager;
     return assetManager;
   }
@@ -138,12 +211,11 @@ export const preloadSpecificAssets = async (assetKeys: AssetKey[]): Promise<void
   const promises: Promise<void>[] = [];
 
   for (const key of assetKeys) {
-    // Sound assets
-    if (key in SOUND_ASSETS) {
-      const soundKey = key as keyof typeof SOUND_ASSETS;
-      if (globalAssetManager.sounds[soundKey]) continue; // Already loaded
+    if (key in SOUND_ASSET_RELATIVE_PATHS) {
+      const soundKey = key as keyof typeof SOUND_ASSET_RELATIVE_PATHS;
+      if (globalAssetManager.sounds[soundKey]) continue;
 
-      const path = SOUND_ASSETS[soundKey];
+      const path = await getSoundAssetPath(soundKey);
       const audio = new Audio();
       audio.preload = 'auto';
       audio.volume = 0.7;
@@ -167,7 +239,7 @@ export const preloadSpecificAssets = async (assetKeys: AssetKey[]): Promise<void
           console.error(`[Specific] 音声ファイルの読み込みに失敗しました: ${path}`, e);
           audio.removeEventListener('canplaythrough', onCanPlay);
           audio.removeEventListener('error', onError);
-          resolve(); // Resolve anyway
+          resolve();
         };
 
         audio.addEventListener('canplaythrough', onCanPlay);
@@ -178,12 +250,11 @@ export const preloadSpecificAssets = async (assetKeys: AssetKey[]): Promise<void
       });
       promises.push(promise);
     }
-    // Image assets
-    else if (key in IMAGE_ASSETS) {
-      const imageKey = key as keyof typeof IMAGE_ASSETS;
-      if (globalAssetManager.images[imageKey]) continue; // Already loaded
+    else if (key in IMAGE_ASSET_RELATIVE_PATHS) {
+      const imageKey = key as keyof typeof IMAGE_ASSET_RELATIVE_PATHS;
+      if (globalAssetManager.images[imageKey]) continue;
 
-      const path = IMAGE_ASSETS[imageKey];
+      const path = await getImageAssetPath(imageKey);
       const img = new Image();
 
       const promise = new Promise<void>((resolve) => {
@@ -211,9 +282,8 @@ export const preloadSpecificAssets = async (assetKeys: AssetKey[]): Promise<void
 
   await Promise.all(promises);
 
-  // Check if all assets are now loaded to set the global flag
-  const allSoundKeys = Object.keys(SOUND_ASSETS);
-  const allImageKeys = Object.keys(IMAGE_ASSETS);
+  const allSoundKeys = Object.keys(SOUND_ASSET_RELATIVE_PATHS);
+  const allImageKeys = Object.keys(IMAGE_ASSET_RELATIVE_PATHS);
   if (globalAssetManager) {
     const loadedSoundKeys = Object.keys(globalAssetManager.sounds);
     const loadedImageKeys = Object.keys(globalAssetManager.images);
@@ -267,7 +337,7 @@ export const initializeAudioSystem = async (): Promise<void> => {
 };
 
 // 音声を再生する関数
-export const playSound = async (soundKey: keyof typeof SOUND_ASSETS, volume: number = 0.7): Promise<void> => {
+export const playSound = async (soundKey: keyof typeof SOUND_ASSET_RELATIVE_PATHS, volume: number = 0.7): Promise<void> => {
   
   // ユーザー操作によるAudioContextの初期化を試みる
   await initializeAudioSystem();
@@ -307,7 +377,7 @@ export const playSound = async (soundKey: keyof typeof SOUND_ASSETS, volume: num
 };
 
 // 画像を取得する関数
-export const getImage = (imageKey: keyof typeof IMAGE_ASSETS): HTMLImageElement | null => {
+export const getImage = (imageKey: keyof typeof IMAGE_ASSET_RELATIVE_PATHS): HTMLImageElement | null => {
   const assetManager = getAssetManager();
   if (!assetManager?.images[imageKey]) {
     console.warn(`画像が見つかりません: ${imageKey}`);
@@ -341,12 +411,14 @@ export const preloadPixiAssets = async (): Promise<void> => {
       // PixiJS.Assets を動的インポート
       const PIXI = await import('pixi.js');
       
+      const PixiGlobal = PIXI;
+
       // スプライトシートを事前読み込み
-      const spriteUrl = IMAGE_ASSETS.spriteItems;
-      
+      const spriteUrl = await getImageAssetPath('spriteItems');
+
       // タイムアウト付きで読み込み
       await Promise.race([
-        PIXI.Assets.load(spriteUrl),
+        PixiGlobal.Assets.load(spriteUrl),
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error('PixiJSプリロードタイムアウト')), 30000)
         )

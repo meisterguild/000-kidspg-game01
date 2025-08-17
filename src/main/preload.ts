@@ -71,6 +71,9 @@ const electronAPI = {
 
   // プラットフォーム情報
   platform: process.platform,
+
+  // 新しいAPI: アセットの絶対パスを取得
+  getAssetAbsolutePath: (relativePath: string) => ipcRenderer.invoke('get-asset-absolute-path', relativePath),
 };
 
 // contextBridgeを使ってRenderer側にAPIを公開

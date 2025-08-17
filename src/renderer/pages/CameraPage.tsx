@@ -24,6 +24,24 @@ const CameraPage: React.FC = () => {
   const [isPhotoTaken, setIsPhotoTaken] = useState(!!capturedImage);
   const { savePhoto, isSaving: isSavingHook, error: saveError } = useSavePhoto();
   const { resizeToSquare } = useImageResize();
+  const [dummyPhotoPath, setDummyPhotoPath] = useState('');
+
+  // ダミーモード時にアセットの絶対パスを取得
+  useEffect(() => {
+    if (isUsingDummy) {
+      window.electronAPI?.getAssetAbsolutePath('assets/images/dummy_photo.png')
+        .then(path => {
+          // Windowsのパス区切り文字をスラッシュに変換し、file://プロトコルを付与
+          const url = path.replace(/\\/g, '/');
+          setDummyPhotoPath(`file://${url}`);
+        })
+        .catch(err => {
+          console.error('Failed to get dummy photo path:', err);
+          // フォールバックパスを設定
+          setDummyPhotoPath('./assets/images/dummy_photo.png'); 
+        });
+    }
+  }, [isUsingDummy]);
 
   // 準備済みカメラストリームを使用
   const setupVideoStream = useCallback(() => {
@@ -35,7 +53,6 @@ const CameraPage: React.FC = () => {
     if (stream) {
       videoRef.current.srcObject = stream;
       videoRef.current.onloadeddata = () => {
-        console.log('CameraPage - Video stream ready');
       };
     }
   }, [isUsingDummy]);
@@ -54,12 +71,12 @@ const CameraPage: React.FC = () => {
 
     try {
       if (isUsingDummy) {
-        // ダミーモード: dummy_photo.pngのパスを直接使用
-        const dummyImageSrc = process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:3000/dummy_photo.png'
-          : './assets/dummy_photo.png';
+        if (!dummyPhotoPath) {
+          throw new Error('ダミー画像のパスが設定されていません');
+        }
+        // ダミーモード: 取得したアセットパスを使用
+        const dummyImageSrc = dummyPhotoPath;
         
-        // dummy_photo.pngを読み込んでbase64に変換
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
@@ -110,7 +127,7 @@ const CameraPage: React.FC = () => {
       console.error('写真撮影エラー:', error);
       alert('画像の処理中にエラーが発生しました。もう一度お試しください。');
     }
-  }, [isUsingDummy, resizeToSquare, setCapturedImage]);
+  }, [isUsingDummy, resizeToSquare, setCapturedImage, dummyPhotoPath]);
 
   const retakePhoto = useCallback(() => {
     setIsPhotoTaken(false);
@@ -207,17 +224,21 @@ const CameraPage: React.FC = () => {
             <>
               {isUsingDummy ? (
                 <div className="w-full h-full flex items-center justify-center bg-gray-200 relative">
-                  <img 
-                    src={process.env.NODE_ENV === 'development' 
-                      ? 'http://localhost:3000/dummy_photo.png'
-                      : './assets/dummy_photo.png'} 
-                    alt="ダミーカメラ画像"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      console.error('Failed to load dummy_photo.png');
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
+                  {dummyPhotoPath ? (
+                    <img 
+                      src={dummyPhotoPath} 
+                      alt="ダミーカメラ画像"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Failed to load dummy_photo.png from path:', dummyPhotoPath);
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <p>ダミー画像読込中...</p>
+                    </div>
+                  )}
                   <div className="absolute top-2 left-2 bg-yellow-500 text-black px-2 py-1 text-xs rounded">
                     ダミーモード
                   </div>

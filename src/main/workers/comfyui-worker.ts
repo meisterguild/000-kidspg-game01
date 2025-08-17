@@ -135,7 +135,6 @@ async function electronFetch(url: string, options: {
         });
         options.body.on('end', () => {
           // FormDataの送信完了をログ出力
-          console.log('FormData pipe completed');
         });
       } else {
         req.write(options.body);
@@ -192,7 +191,6 @@ class ComfyUIWorker {
   constructor(config: ComfyUIConfig) {
     this.config = config;
     // image_generate.jsonを使用するため、共通テンプレートの読み込みは不要
-    console.log('ComfyUI Worker - Initialized (using individual image_generate.json files)');
   }
 
   private async loadWorkflowTemplate(): Promise<void> {
@@ -222,23 +220,17 @@ class ComfyUIWorker {
 
   async preUploadImage(imageData: string, datetime: string): Promise<void> {
     try {
-      console.log(`ComfyUI Worker - Pre-uploading image for datetime: ${datetime}`);
       const buffer = Buffer.from(imageData, 'base64');
       const filename = `photo_${datetime}.png`;
-      console.log(`ComfyUI Worker - Created buffer size: ${buffer.length} bytes`);
       
       const formData = new FormData();
       formData.append('image', buffer, { filename, contentType: 'image/png' });
-      console.log(`ComfyUI Worker - FormData created, uploading to ${this.config.baseUrl}/upload/image`);
 
-      const startTime = Date.now();
       const response = await electronFetch(`${this.config.baseUrl}/upload/image`, {
         method: 'POST',
         body: formData,
         timeout: this.config.timeouts.upload
       });
-      const uploadDuration = Date.now() - startTime;
-      console.log(`ComfyUI Worker - Upload request completed in ${uploadDuration}ms, status: ${response.status}`);
 
       if (!response.ok) {
         const errorText = await response.buffer().then(buf => buf.toString()).catch(() => 'Unknown error');
@@ -249,7 +241,6 @@ class ComfyUIWorker {
       const result = await response.json() as ComfyUIUploadResponse;
       const uploadedFilename = result.name || filename;
       
-      console.log(`ComfyUI Worker - Pre-upload completed successfully: ${uploadedFilename} for ${datetime} (total time: ${uploadDuration}ms)`);
       this.sendMessage('pre-upload-completed', { 
         datetime, 
         uploadedFilename 
@@ -265,7 +256,6 @@ class ComfyUIWorker {
   }
 
   async addJob(jobData: JobData): Promise<void> {
-    console.log(`ComfyUI Worker - Adding job to queue: ${jobData.id} for datetime: ${jobData.datetime}`);
     this.jobQueue.push(jobData);
     this.sendJobProgress(jobData.datetime, 'job-queued', { 
       position: this.jobQueue.length,
@@ -273,39 +263,29 @@ class ComfyUIWorker {
     });
     
     if (!this.isProcessing) {
-      console.log(`ComfyUI Worker - Starting queue processing`);
       this.processQueue();
-    } else {
-      console.log(`ComfyUI Worker - Queue processing already in progress`);
     }
   }
 
   async cancelJob(datetime: string): Promise<void> {
-    console.log(`ComfyUI Worker - Canceling job for datetime: ${datetime}`);
     
     // キューから削除
     const queueIndex = this.jobQueue.findIndex(job => job.datetime === datetime);
     if (queueIndex !== -1) {
       this.jobQueue.splice(queueIndex, 1);
-      console.log(`ComfyUI Worker - Job removed from internal queue: ${datetime}`);
     }
     
     // アクティブジョブから削除し、ComfyUIサーバーからも削除
     const activeJob = this.activeJobs.get(datetime);
     if (activeJob) {
-      console.log(`ComfyUI Worker - Found active job to cancel: ${activeJob.promptId}`);
       try {
         // ComfyUIサーバーのキューから削除
         await this.cancelJobOnServer(activeJob.promptId);
-        console.log(`ComfyUI Worker - Job canceled on server: ${activeJob.promptId}`);
       } catch (error) {
         console.warn(`ComfyUI Worker - Failed to cancel job on server: ${error}`);
       }
       
       this.activeJobs.delete(datetime);
-      console.log(`ComfyUI Worker - Active job canceled: ${datetime}`);
-    } else {
-      console.log(`ComfyUI Worker - No active job found for datetime: ${datetime}`);
     }
     
     this.sendJobProgress(datetime, 'job-canceled', { 
@@ -315,7 +295,6 @@ class ComfyUIWorker {
 
   private async cancelJobOnServer(promptId: string): Promise<void> {
     try {
-      console.log(`ComfyUI Worker - Attempting to cancel job on server: ${promptId}`);
       
       // まず現在のキューを取得
       const queueResponse = await electronFetch(`${this.config.baseUrl}/queue`);
@@ -330,7 +309,6 @@ class ComfyUIWorker {
       const jobExists = allJobs.some(([, id]) => id === promptId);
       
       if (jobExists) {
-        console.log(`ComfyUI Worker - Job found in server queue, deleting: ${promptId}`);
         
         // キューからジョブを削除
         const deleteResponse = await electronFetch(`${this.config.baseUrl}/queue`, {
@@ -344,22 +322,15 @@ class ComfyUIWorker {
         if (!deleteResponse.ok) {
           throw new Error(`Failed to delete from queue: ${deleteResponse.status}`);
         }
-        
-        console.log(`ComfyUI Worker - Successfully deleted job from server queue: ${promptId}`);
-      } else {
-        console.log(`ComfyUI Worker - Job not found in server queue (may have already completed): ${promptId}`);
       }
       
       // 実行中の場合は割り込み処理も試行
       if (queueData.queue_running?.some(([, id]) => id === promptId)) {
-        console.log(`ComfyUI Worker - Job is running, sending interrupt: ${promptId}`);
         const interruptResponse = await electronFetch(`${this.config.baseUrl}/interrupt`, {
           method: 'POST'
         });
         
-        if (interruptResponse.ok) {
-          console.log(`ComfyUI Worker - Interrupt sent successfully for: ${promptId}`);
-        } else {
+        if (!interruptResponse.ok) {
           console.warn(`ComfyUI Worker - Failed to send interrupt: ${interruptResponse.status}`);
         }
       }
@@ -371,61 +342,46 @@ class ComfyUIWorker {
   }
 
   private async processQueue(): Promise<void> {
-    console.log(`ComfyUI Worker - processQueue called - isProcessing: ${this.isProcessing}, queueLength: ${this.jobQueue.length}, activeJobs: ${this.activeJobs.size}, maxConcurrent: ${this.config.maxConcurrentJobs}`);
     
     if (this.isProcessing || this.jobQueue.length === 0) {
-      console.log(`ComfyUI Worker - processQueue early return - isProcessing: ${this.isProcessing}, queueLength: ${this.jobQueue.length}`);
       return;
     }
     if (this.activeJobs.size >= this.config.maxConcurrentJobs) {
-      console.log(`ComfyUI Worker - processQueue early return - activeJobs: ${this.activeJobs.size} >= maxConcurrent: ${this.config.maxConcurrentJobs}`);
       return;
     }
 
     this.isProcessing = true;
-    console.log(`ComfyUI Worker - processQueue starting processing`);
 
     while (this.jobQueue.length > 0 && this.activeJobs.size < this.config.maxConcurrentJobs) {
       const job = this.jobQueue.shift();
       if (!job) continue;
-      console.log(`ComfyUI Worker - processQueue processing job: ${job.id}`);
       try {
         await this.processJob(job);
-        console.log(`ComfyUI Worker - processQueue completed job: ${job.id}`);
       } catch (error) {
         console.error(`ComfyUI Worker - processQueue error for job ${job.id}:`, error);
       }
     }
 
     this.isProcessing = false;
-    console.log(`ComfyUI Worker - processQueue finished processing`);
 
     if (this.jobQueue.length > 0) {
-      console.log(`ComfyUI Worker - processQueue scheduling next batch in 1 second`);
       setTimeout(() => this.processQueue(), 1000);
     }
   }
 
   private async processJob(job: JobData): Promise<void> {
     try {
-      console.log(`ComfyUI Worker - processJob starting for: ${job.id}`);
       this.sendJobProgress(job.datetime, 'job-started', { message: '画像変換を開始します' });
 
-      console.log(`ComfyUI Worker - processJob checking pre-upload for datetime: ${job.datetime}, preUploadedFilename: ${job.preUploadedFilename}`);
       
       let uploadedFilename: string;
       if (job.preUploadedFilename) {
-        console.log(`ComfyUI Worker - processJob using pre-uploaded image: ${job.preUploadedFilename} for: ${job.id}`);
         uploadedFilename = job.preUploadedFilename;
       } else {
-        console.log(`ComfyUI Worker - processJob uploading image for: ${job.id} (no pre-upload found)`);
         uploadedFilename = await this.uploadImage(job);
-        console.log(`ComfyUI Worker - processJob uploaded image: ${uploadedFilename} for: ${job.id}`);
       }
       
-      console.log(`ComfyUI Worker - processJob submitting prompt for: ${job.id}`);
       const promptId = await this.submitPrompt(job, uploadedFilename);
-      console.log(`ComfyUI Worker - processJob got promptId: ${promptId} for: ${job.id}`);
       
       this.activeJobs.set(job.datetime, {
         promptId,
@@ -452,22 +408,17 @@ class ComfyUIWorker {
 
   private async uploadImage(job: JobData): Promise<string> {
     try {
-      console.log(`ComfyUI Worker - uploadImage starting for: ${job.id}`);
       const buffer = Buffer.from(job.imageData, 'base64');
       const filename = `photo_${job.datetime}.png`;
-      console.log(`ComfyUI Worker - uploadImage created buffer, size: ${buffer.length} for: ${job.id}`);
       
       const formData = new FormData();
       formData.append('image', buffer, { filename, contentType: 'image/png' });
-      console.log(`ComfyUI Worker - uploadImage created FormData for: ${job.id}`);
 
-      console.log(`ComfyUI Worker - uploadImage sending POST to ${this.config.baseUrl}/upload/image for: ${job.id}`);
       const response = await electronFetch(`${this.config.baseUrl}/upload/image`, {
         method: 'POST',
         body: formData,
         timeout: this.config.timeouts.upload
       });
-      console.log(`ComfyUI Worker - uploadImage got response: ${response.status} ${response.statusText} for: ${job.id}`);
 
       if (!response.ok) {
         const errorText = await response.buffer().then(buf => buf.toString()).catch(() => 'Unknown error');
@@ -476,7 +427,6 @@ class ComfyUIWorker {
       }
 
       const result = await response.json() as ComfyUIUploadResponse;
-      console.log(`ComfyUI Worker - uploadImage success result:`, result);
       return result.name || filename;
 
     } catch (error) {
@@ -485,26 +435,21 @@ class ComfyUIWorker {
     }
   }
 
-  private async submitPrompt(job: JobData, uploadedFilename: string): Promise<string> {
+  private async submitPrompt(job: JobData, _uploadedFilename: string): Promise<string> {
     try {
-      console.log(`ComfyUI Worker - Submitting prompt for job ${job.id} with uploaded file: ${uploadedFilename}`);
       
       // 結果フォルダからimage_generate.jsonを読み込み
       const imageGeneratePath = path.join(job.resultDir, 'image_generate.json');
-      console.log(`ComfyUI Worker - Loading workflow from: ${imageGeneratePath}`);
       
       let workflow: WorkflowTemplate;
       try {
         const workflowContent = await fs.readFile(imageGeneratePath, 'utf-8');
         workflow = JSON.parse(workflowContent);
-        console.log(`ComfyUI Worker - Successfully loaded workflow from image_generate.json`);
       } catch (error) {
         throw new Error(`image_generate.json読み込み失敗: ${error}`);
       }
 
       // ワークフローテンプレートは既に正しいファイル名で設定済み
-      console.log(`ComfyUI Worker - Using workflow template with pre-configured filenames`);
-      console.log(`ComfyUI Worker - Expected upload filename: ${uploadedFilename}`);
 
       const promptData = {
         prompt: workflow,
@@ -518,8 +463,6 @@ class ComfyUIWorker {
         }
       };
 
-      console.log(`ComfyUI Worker - Sending POST to ${this.config.baseUrl}/prompt`);
-      console.log(`ComfyUI Worker - Prompt data:`, JSON.stringify(promptData, null, 2));
       
       const response = await electronFetch(`${this.config.baseUrl}/prompt`, {
         method: 'POST',
@@ -528,7 +471,6 @@ class ComfyUIWorker {
         timeout: this.config.timeouts.processing
       });
 
-      console.log(`ComfyUI Worker - Prompt response: ${response.status} ${response.statusText}`);
       if (!response.ok) {
         const errorText = await response.buffer().then(buf => buf.toString()).catch(() => 'Unknown error');
         console.error(`ComfyUI Worker - Prompt error response body: ${errorText}`);
@@ -536,7 +478,6 @@ class ComfyUIWorker {
       }
 
       const result = await response.json() as ComfyUIPromptResponse;
-      console.log(`ComfyUI Worker - Got prompt_id: ${result.prompt_id}`);
       
       return result.prompt_id;
 
@@ -625,7 +566,6 @@ class ComfyUIWorker {
       let imageUrl: string | null = null;
       let actualFilename: string | null = null;
 
-      console.log(`ComfyUI Worker - Processing outputs from nodes: ${Object.keys(outputs).join(', ')}`);
       
       // SaveImageノード（通常はnode 9）を優先的に探す
       const saveImageNodeIds = ['9', '8']; // SaveImageノードの可能性があるID
@@ -656,8 +596,6 @@ class ComfyUIWorker {
           const image = nodeOutput.images[0];
           imageUrl = `${this.config.baseUrl}/view?filename=${image.filename}&subfolder=${image.subfolder}&type=${image.type}`;
           actualFilename = image.filename;
-          console.log(`ComfyUI Worker - Selected output from node ${selectedNodeId}: ${actualFilename}`);
-          console.log(`ComfyUI Worker - Image details:`, image);
         }
       }
 
@@ -685,7 +623,6 @@ class ComfyUIWorker {
 
   private async downloadAndSaveResult(job: ActiveJob, imageUrl: string, actualFilename: string): Promise<string> {
     try {
-      console.log(`ComfyUI Worker - Downloading result from: ${imageUrl}`);
       const response = await electronFetch(imageUrl);
       if (!response.ok) {
         throw new Error(`画像ダウンロードエラー: ${response.status}`);
@@ -696,7 +633,6 @@ class ComfyUIWorker {
       const outputPath = path.join(job.resultDir, actualFilename);
       
       await fs.writeFile(outputPath, buffer);
-      console.log(`ComfyUI Worker - Result saved to: ${outputPath}`);
       
       return outputPath;
 
@@ -744,11 +680,9 @@ class ComfyUIWorker {
 
   async healthCheck(): Promise<boolean> {
     try {
-      console.log(`ComfyUI health check: ${this.config.baseUrl}/system_stats`);
       const response = await electronFetch(`${this.config.baseUrl}/system_stats`, {
         timeout: 5000
       });
-      console.log(`ComfyUI health check response: ${response.status} ${response.statusText}`);
       return response.ok;
     } catch (error) {
       console.error('ComfyUI health check error:', error);
@@ -763,11 +697,9 @@ parentPort?.on('message', async (message: WorkerMessage) => {
   const { type, data } = message;
 
   try {
-    console.log(`ComfyUI Worker - Received message: ${type}`);
     
     switch (type) {
       case 'init':
-        console.log(`ComfyUI Worker - Initializing with config`);
         worker = new ComfyUIWorker(data.config as ComfyUIConfig);
         parentPort?.postMessage({ type: 'ready', data: {} });
         break;
@@ -775,7 +707,6 @@ parentPort?.on('message', async (message: WorkerMessage) => {
       case 'pre-upload-image':
         if (worker) {
           const { imageData, datetime } = data as { imageData: string; datetime: string };
-          console.log(`ComfyUI Worker - Pre-uploading image for: ${datetime}`);
           await worker.preUploadImage(imageData, datetime);
         } else {
           console.error('ComfyUI Worker - Worker not initialized for pre-upload-image');
@@ -785,7 +716,6 @@ parentPort?.on('message', async (message: WorkerMessage) => {
       case 'add-job':
         if (worker) {
           const jobData = data as unknown as JobData;
-          console.log(`ComfyUI Worker - Adding job: ${jobData.id}`);
           await worker.addJob(jobData);
         } else {
           console.error('ComfyUI Worker - Worker not initialized for add-job');
@@ -795,7 +725,6 @@ parentPort?.on('message', async (message: WorkerMessage) => {
       case 'cancel-job':
         if (worker) {
           const { datetime } = data as { datetime: string };
-          console.log(`ComfyUI Worker - Canceling job: ${datetime}`);
           await worker.cancelJob(datetime);
         } else {
           console.error('ComfyUI Worker - Worker not initialized for cancel-job');
@@ -804,7 +733,6 @@ parentPort?.on('message', async (message: WorkerMessage) => {
 
       case 'get-status':
         if (worker) {
-          console.log(`ComfyUI Worker - Getting status`);
           const status = await worker.getStatus();
           parentPort?.postMessage({ type: 'status', data: status });
         } else {
@@ -814,7 +742,6 @@ parentPort?.on('message', async (message: WorkerMessage) => {
 
       case 'health-check':
         if (worker) {
-          console.log(`ComfyUI Worker - Health check`);
           const isHealthy = await worker.healthCheck();
           parentPort?.postMessage({ type: 'health-check-result', data: { isHealthy } });
         } else {

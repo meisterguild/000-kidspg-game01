@@ -74,7 +74,6 @@ export class ComfyUIService {
       });
 
       await this.waitForReady();
-      console.log('ComfyUI Service initialized successfully');
 
     } catch (error) {
       throw new Error(`ComfyUI Service initialization failed: ${error}`);
@@ -109,11 +108,9 @@ export class ComfyUIService {
 
     switch (type) {
       case 'ready':
-        console.log('ComfyUI Worker is ready');
         break;
 
       case 'pre-upload-completed':
-        console.log('ComfyUI Pre-upload completed:', data);
         break;
 
       case 'job-queued':
@@ -142,7 +139,6 @@ export class ComfyUIService {
         const jobData = data as ComfyUIJobProgressData;
         const job = this.activeJobs.get(jobData.jobId);
         if (job && this.memorialCardCallback) {
-          console.log(`ComfyUIService - Triggering memorial card generation for AI image: ${jobData.jobId}`);
           this.memorialCardCallback(jobData.jobId, job.resultDir)
             .catch(error => {
               console.error('ComfyUIService - Memorial card generation error:', error);
@@ -161,7 +157,6 @@ export class ComfyUIService {
       case 'job-canceled':
         this.updateJobStatus((data as ComfyUIJobProgressData).jobId, 'error'); // canceledをerrorとして扱う
         this.sendToRenderer('comfyui-job-canceled', data);
-        console.log('ComfyUIService - Job canceled:', (data as ComfyUIJobProgressData).jobId);
         break;
 
       case 'status':
@@ -200,7 +195,6 @@ export class ComfyUIService {
       throw new Error('ComfyUI Service not initialized');
     }
 
-    console.log(`ComfyUI Service - Pre-uploading image for datetime: ${datetime}`);
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -214,7 +208,6 @@ export class ComfyUIService {
           
           if (message.data.uploadedFilename) {
             this.preUploadedImages.set(datetime, message.data.uploadedFilename);
-            console.log(`ComfyUI Service - Pre-upload completed: ${message.data.uploadedFilename} for ${datetime}`);
             resolve(message.data.uploadedFilename);
           } else {
             reject(new Error(message.data.error || 'Pre-upload failed'));
@@ -239,7 +232,6 @@ export class ComfyUIService {
     }
 
     const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`ComfyUI Service - Adding job: ${jobId} for datetime: ${request.datetime}`);
     
     this.activeJobs.set(request.datetime, {
       datetime: request.datetime,
@@ -249,9 +241,6 @@ export class ComfyUIService {
     });
 
     const preUploadedFilename = this.preUploadedImages.get(request.datetime);
-    console.log(`ComfyUI Service - Looking for pre-uploaded file for datetime: ${request.datetime}`);
-    console.log(`ComfyUI Service - Available pre-uploaded files:`, Array.from(this.preUploadedImages.keys()));
-    console.log(`ComfyUI Service - Found pre-uploaded filename: ${preUploadedFilename}`);
     
     this.worker.postMessage({
       type: 'add-job',
@@ -264,7 +253,6 @@ export class ComfyUIService {
       }
     });
 
-    console.log(`ComfyUI Service - Job message sent to worker: ${jobId}`);
     return jobId;
   }
 
@@ -329,31 +317,22 @@ export class ComfyUIService {
 
   async cancelJob(datetime: string): Promise<boolean> {
     if (!this.worker) {
-      console.log(`ComfyUI Service - Worker not initialized, cannot cancel job: ${datetime}`);
       return false;
     }
 
-    console.log(`ComfyUI Service - Canceling job for datetime: ${datetime}`);
     
     // アクティブジョブから削除
     const job = this.activeJobs.get(datetime);
     if (job) {
-      console.log(`ComfyUI Service - Found active job to cancel: ${JSON.stringify(job)}`);
       this.activeJobs.delete(datetime);
-      console.log(`ComfyUI Service - Job canceled and removed: ${datetime}`);
-    } else {
-      console.log(`ComfyUI Service - No active job found for datetime: ${datetime}`);
-      console.log(`ComfyUI Service - Current active jobs: ${JSON.stringify(Array.from(this.activeJobs.keys()))}`);
     }
 
     // プリアップロード済み画像も削除
     if (this.preUploadedImages.has(datetime)) {
       this.preUploadedImages.delete(datetime);
-      console.log(`ComfyUI Service - Pre-uploaded image removed: ${datetime}`);
     }
 
     // Workerにキャンセル通知（サーバー側のキューからも削除）
-    console.log(`ComfyUI Service - Sending cancel message to worker for datetime: ${datetime}`);
     this.worker.postMessage({
       type: 'cancel-job',
       data: { datetime }

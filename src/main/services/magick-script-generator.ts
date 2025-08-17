@@ -14,7 +14,6 @@ export class MagickScriptGenerator {
     const datetime = path.basename(resultDir);
     const scriptPath = path.join(resultDir, `magick_script_${datetime}.txt`);
     
-    console.log(`MagickScriptGenerator - Generating script: ${scriptPath}`);
     
     try {
       const scriptContent = this.buildScriptContent(
@@ -24,7 +23,6 @@ export class MagickScriptGenerator {
       );
       
       await fs.writeFile(scriptPath, scriptContent, 'utf-8');
-      console.log('MagickScriptGenerator - Script file created successfully');
       
       return scriptPath;
       
@@ -166,7 +164,6 @@ export class MagickScriptGenerator {
         return { valid: false, error: 'Script file is empty' };
       }
       
-      console.log(`MagickScriptGenerator - Script validation passed: ${scriptPath} (${stats.size} bytes)`);
       return { valid: true };
       
     } catch (error) {
@@ -182,11 +179,9 @@ export class MagickScriptGenerator {
    */
   async logScriptContent(scriptPath: string): Promise<void> {
     try {
-      const content = await fs.readFile(scriptPath, 'utf-8');
-      console.log('MagickScriptGenerator - Script content:');
-      console.log('--- Script Start ---');
-      console.log(content);
-      console.log('--- Script End ---');
+      // ログ出力が削除されたため、このメソッドは現在何も行わない
+      // ファイル存在確認のみ
+      await fs.access(scriptPath);
     } catch (error) {
       console.error('MagickScriptGenerator - Failed to read script for logging:', error);
     }
@@ -198,7 +193,6 @@ export class MagickScriptGenerator {
   async cleanupScript(scriptPath: string): Promise<void> {
     try {
       await fs.unlink(scriptPath);
-      console.log(`MagickScriptGenerator - Cleaned up script file: ${scriptPath}`);
     } catch (error) {
       console.warn(`MagickScriptGenerator - Failed to cleanup script file: ${error}`);
     }

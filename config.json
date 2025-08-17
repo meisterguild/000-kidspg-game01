@@ -32,7 +32,7 @@
     "_comment_polling_interval": "キュー状態チェック間隔（ミリ秒）",
     "pollingInterval": 2000,
     "_comment_max_concurrent_jobs": "同時処理可能ジョブ数",
-    "maxConcurrentJobs": 3,
+    "maxConcurrentJobs": 50,
     "_comment_timeouts": "タイムアウト設定（ミリ秒）",
     "timeouts": {
       "upload": 60000,

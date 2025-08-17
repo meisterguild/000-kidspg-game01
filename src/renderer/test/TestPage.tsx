@@ -11,17 +11,6 @@ export const TestPage: React.FC = () => {
   const [comfyUIJobs, setComfyUIJobs] = useState<ComfyUIActiveJob[]>([]);
   const [comfyUILoading, setComfyUILoading] = useState(false);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        window.location.href = '/'; // トップページにリダイレクト
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   const handleConfigReload = useCallback(async () => {
     try {
       await playSound('buttonClick');

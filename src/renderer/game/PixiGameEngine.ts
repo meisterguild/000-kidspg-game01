@@ -1,7 +1,6 @@
 import * as PIXI from 'pixi.js';
 import { GAME_CONFIG, SPRITE_CONFIG, TIMING_CONFIG, PERFORMANCE_CONFIG, UI_CONFIG } from '@shared/utils/constants';
-import { playSound } from '../utils/assets';
-import spriteSheetUrl from '../assets/images/sprite_items.png';
+import { playSound, getImageAssetPath } from '../utils/assets';
 import { AppConfig } from '@shared/types';
 
 interface GameState {
@@ -90,19 +89,40 @@ export class PixiGameEngine {
   }
 
   async initialize(container: HTMLElement): Promise<void> {
+    
     try {
+      
       // コンテナのサイズを取得
       const containerWidth = container.clientWidth;
       const containerHeight = container.clientHeight;
       
       // PixiJS v8の推奨初期化方法（レスポンシブサイズ）
-      await this.app.init({
-        width: containerWidth,
-        height: containerHeight,
-        backgroundColor: 0x000000,
-        antialias: true,
-        resizeTo: container // 自動リサイズ
-      });
+      
+      try {
+        // まずWebGLで初期化を試行
+        await this.app.init({
+          width: containerWidth,
+          height: containerHeight,
+          backgroundColor: 0x000000,
+          antialias: true,
+          resizeTo: container, // 自動リサイズ
+          preference: 'webgl', // WebGLを優先
+          failIfMajorPerformanceCaveat: false // パフォーマンス警告を無視
+        });
+      } catch (webglError) {
+        console.warn('PixiGameEngine: WebGL initialization failed, trying Canvas fallback:', webglError);
+        
+        // WebGL失敗時はCanvasレンダラーで再試行
+        await this.app.init({
+          width: containerWidth,
+          height: containerHeight,
+          backgroundColor: 0x000000,
+          antialias: false, // Canvasモードではantialiasを無効
+          resizeTo: container,
+          preference: 'webgpu-fallback', // Canvasフォールバック
+          powerPreference: 'low-power' // 低電力モード
+        });
+      }
       
       // Canvas要素の存在確認
       if (!this.app.canvas) {
@@ -113,19 +133,94 @@ export class PixiGameEngine {
       
       // スプライトシートを読み込み（プリロード済みの場合は即座に取得）
       try {
+        
+        // 動的にスプライトシートのパスを取得
+        const spriteSheetUrl = await getImageAssetPath('spriteItems');
+        
+        // ファイル存在確認 (本番環境でのデバッグ)
+        // URL validation completed
+        
         // まずキャッシュから取得を試行
         this.spriteTexture = PIXI.Assets.get(spriteSheetUrl);
         
         if (!this.spriteTexture) {
           // キャッシュにない場合は改めて読み込み
           this.spriteTexture = await PIXI.Assets.load(spriteSheetUrl);
-        } else {
-          // スプライトテクスチャは既にキャッシュされている
         }
       } catch (loadError) {
-        console.warn('スプライトシート読み込みでエラーが発生しました:', loadError);
-        // フォールバック: 直接読み込みを試行
-        this.spriteTexture = await PIXI.Assets.load(spriteSheetUrl);
+        console.error('PixiGameEngine: CRITICAL - Sprite sheet loading FAILED:', loadError);
+        console.error('PixiGameEngine: Error type:', typeof loadError);
+        console.error('PixiGameEngine: Error name:', loadError instanceof Error ? loadError.name : 'Unknown');
+        console.error('PixiGameEngine: Error message:', loadError instanceof Error ? loadError.message : String(loadError));
+        console.error('PixiGameEngine: Error stack:', loadError instanceof Error ? loadError.stack : 'No stack');
+        
+        // フォールバック1: 動的パス取得を再試行
+        try {
+          const spriteSheetUrl = await getImageAssetPath('spriteItems');
+          this.spriteTexture = await PIXI.Assets.load(spriteSheetUrl);
+        } catch (fallbackError) {
+          console.error('PixiGameEngine: Fallback 1 FAILED:', fallbackError);
+          
+          // フォールバック2: HTMLImageElement経由でテクスチャ作成
+          try {
+            const spriteSheetUrl = await getImageAssetPath('spriteItems');
+            
+            const img = new Image();
+            
+            await new Promise<void>((resolve, reject) => {
+              const timeoutId = setTimeout(() => {
+                reject(new Error('HTMLImageElement loading timeout (10 seconds)'));
+              }, 10000);
+              
+              img.onload = () => {
+                clearTimeout(timeoutId);
+                resolve();
+              };
+              
+              img.onerror = (e) => {
+                clearTimeout(timeoutId);
+                console.error('PixiGameEngine: HTMLImageElement loading failed for URL:', spriteSheetUrl);
+                console.error('PixiGameEngine: Error details:', e);
+                
+                // file://プロトコルが失敗した場合、直接パスでの読み込みを試行
+                if (spriteSheetUrl.startsWith('file://')) {
+                  const directPath = spriteSheetUrl.replace('file:///', '');
+                  
+                  img.onload = () => {
+                    clearTimeout(timeoutId);
+                    resolve();
+                  };
+                  
+                  img.onerror = () => {
+                    reject(new Error('HTMLImageElement loading failed with both URL and direct path'));
+                  };
+                  
+                  img.src = directPath;
+                } else {
+                  reject(new Error('HTMLImageElement loading failed'));
+                }
+              };
+              
+              // 元のURLで試行
+              img.src = spriteSheetUrl;
+            });
+            
+            // HTMLImageElementからPixiJSテクスチャを作成
+            this.spriteTexture = PIXI.Texture.from(img);
+            
+          } catch (htmlImageError) {
+            console.error('PixiGameEngine: FATAL - All fallback methods FAILED:', htmlImageError);
+            console.error('PixiGameEngine: HTMLImageElement fallback error details:', {
+              type: typeof htmlImageError,
+              name: htmlImageError instanceof Error ? htmlImageError.name : 'Unknown',
+              message: htmlImageError instanceof Error ? htmlImageError.message : String(htmlImageError)
+            });
+            
+            // 最終フォールバック: スプライト無しで続行
+            console.warn('PixiGameEngine: WARNING - Continuing without sprite sheet (using fallback graphics)');
+            this.spriteTexture = null;
+          }
+        }
       }
       
       // DOM更新を待つ
@@ -139,6 +234,7 @@ export class PixiGameEngine {
       
       // Phase 3: リサイズハンドラーのセットアップ
       this.setupResizeHandler();
+      
       
     } catch (error) {
       console.error('PixiJS初期化エラー:', error);
@@ -638,16 +734,8 @@ export class PixiGameEngine {
     if (!this.responsiveEnabled) return;
     
     try {
-      const sizes = this.calculateResponsiveSizes();
-      const layout = this.updateLayoutCalculations();
-      
-      // Phase 6: 統合テスト用の簡素化ログ
-      console.log('🎯 Responsive System Active:', {
-        canvas: `${this.app.screen.width}x${this.app.screen.height}`,
-        gameObjectSize: sizes.characterSize,
-        lanes: layout.lanes.length,
-        obstacles: this.obstacles.length
-      });
+      // レスポンシブシステムの初期化確認のみ
+      // 実際の計算は必要時に行われる
     } catch (error) {
       console.warn('レスポンシブ計算エラー:', error);
     }
@@ -689,7 +777,6 @@ export class PixiGameEngine {
     try {
       // Phase 6: パフォーマンス最適化のためログ削除
       // const newSize = { width: this.app.screen.width, height: this.app.screen.height };
-      // console.log('📐 Resize detected:', newSize);
       
       // Phase 4: レーンレイアウト更新を実行
       this.updateLaneLayout();

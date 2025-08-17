@@ -38,10 +38,8 @@ export class MemorialCardService {
    * ダミー画像用のメモリアルカード生成
    */
   async generateFromDummyImage(datetime: string, resultDir: string): Promise<void> {
-    console.log(`MemorialCardService - Starting memorial card generation for dummy image: ${datetime}`);
     
     if (!this.config.enabled) {
-      console.log('MemorialCardService - Memorial card generation is disabled');
       return;
     }
 
@@ -49,7 +47,6 @@ export class MemorialCardService {
       const result = await this.generateMemorialCard(resultDir);
       
       if (result.success) {
-        console.log(`MemorialCardService - Memorial card generated: ${result.outputPath}`);
         this.sendToRenderer('memorial-card-generated', {
           success: true,
           datetime,
@@ -80,20 +77,16 @@ export class MemorialCardService {
    * AI変換画像用のメモリアルカード生成
    */
   async generateFromAIImage(jobId: string, resultDir: string): Promise<void> {
-    console.log(`MemorialCardService - AI image memorial card generation for job: ${jobId}, resultDir: ${resultDir}`);
     
     if (!this.config.enabled) {
-      console.log('MemorialCardService - Memorial card generation is disabled');
       return;
     }
     
-    console.log(`MemorialCardService - Config enabled, starting AI image card generation`);
 
     try {
       const result = await this.generateMemorialCard(resultDir);
       
       if (result.success) {
-        console.log(`MemorialCardService - AI image memorial card generated successfully: ${result.outputPath}`);
         this.sendToRenderer('memorial-card-generated', {
           success: true,
           datetime: jobId,
@@ -133,7 +126,6 @@ export class MemorialCardService {
    */
   async generateMemorialCard(resultDir: string): Promise<MemorialCardResult> {
     const startTime = Date.now();
-    console.log(`MemorialCardService - Starting memorial card generation for: ${resultDir}`);
     
     try {
       // Step 1: 入力検証
@@ -195,7 +187,6 @@ export class MemorialCardService {
       await this.scriptGenerator.logScriptContent(scriptPath);
 
       // Step 7: ImageMagickコマンド実行
-      console.log('MemorialCardService - Executing ImageMagick command...');
       const executionResult = await this.commandExecutor.executeMagickScript(scriptPath);
 
       // Step 8: 実行結果の処理
@@ -240,7 +231,6 @@ export class MemorialCardService {
       try {
         const resultContent = await fs.readFile(resultJsonPath, 'utf-8');
         gameResult = JSON.parse(resultContent);
-        console.log('MemorialCardService - Loaded game result:', gameResult);
       } catch (error) {
         errors.push(`Failed to read result.json: ${error}`);
         return { valid: false, errors };
@@ -253,7 +243,6 @@ export class MemorialCardService {
         return { valid: false, errors };
       }
 
-      console.log(`MemorialCardService - Found anime photo: ${animePhotoPath}`);
 
       return {
         valid: true,
@@ -284,9 +273,7 @@ export class MemorialCardService {
       // 出力ファイルの存在確認
       try {
         await fs.access(outputPath);
-        const stats = await fs.stat(outputPath);
         
-        console.log(`MemorialCardService - Output file created: ${outputPath} (${stats.size} bytes)`);
         
         return {
           success: true,

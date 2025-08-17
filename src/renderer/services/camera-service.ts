@@ -49,10 +49,10 @@ export class CameraService {
         img.onerror = reject;
         // Electronでのアセットパス  
         if (process.env.NODE_ENV === 'development') {
-          img.src = 'http://localhost:3000/dummy_photo.png';
+          img.src = 'http://localhost:3000/assets/images/dummy_photo.png';
         } else {
           // 本番環境ではElectronのリソースパスを使用
-          img.src = './assets/dummy_photo.png';
+          img.src = './assets/images/dummy_photo.png';
         }
       });
 

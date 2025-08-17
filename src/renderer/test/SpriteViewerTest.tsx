@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
-import spriteSheetUrl from '../assets/images/sprite_items.png';
+import { getImageAssetPath } from '../utils/assets';
 
 interface SpriteInfo {
   name: string;
@@ -168,6 +168,7 @@ export const SpriteViewerTest: React.FC = () => {
         }
 
         // スプライトシートを読み込み
+        const spriteSheetUrl = await getImageAssetPath('spriteItems');
         const texture = await PIXI.Assets.load(spriteSheetUrl);
         
         // グリッド表示用の背景

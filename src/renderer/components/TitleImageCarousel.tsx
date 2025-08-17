@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IMAGE_ASSETS } from '../utils/assets';
+import { getImageAssets } from '../utils/assets';
 
 const TitleImageCarousel: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -7,15 +7,24 @@ const TitleImageCarousel: React.FC = () => {
   const [imageSlotA, setImageSlotA] = useState(0);
   const [imageSlotB, setImageSlotB] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
   
-  const images = [
-    IMAGE_ASSETS.titleImage01,
-    IMAGE_ASSETS.titleImage02,
-    IMAGE_ASSETS.titleImage03,
-    IMAGE_ASSETS.titleImage04
-  ];
+  useEffect(() => {
+    const loadImages = async () => {
+      const imageAssets = await getImageAssets();
+      setImages([
+        imageAssets.titleImage01,
+        imageAssets.titleImage02,
+        imageAssets.titleImage03,
+        imageAssets.titleImage04
+      ]);
+    };
+    loadImages();
+  }, []);
 
   useEffect(() => {
+    if (images.length === 0) return; // 画像が読み込まれていない場合は何もしない
+    
     const interval = setInterval(() => {
       setIsTransitioning(true);
       

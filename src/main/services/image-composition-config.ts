@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { app } from 'electron';
 import type { GameResult } from '../../shared/types';
 import { RANK_NAMES } from '../../shared/utils/helpers';
 
@@ -32,7 +33,14 @@ export class ImageCompositionConfig {
   private readonly fontPath: string;
 
   constructor(cardBaseImagesDir: string = 'card_base_images') {
-    this.cardBaseImagesDir = cardBaseImagesDir;
+    // 絶対パスに解決
+    if (app.isPackaged) {
+      // 本番環境: exeファイルと同じディレクトリ
+      this.cardBaseImagesDir = path.join(path.dirname(app.getPath('exe')), cardBaseImagesDir);
+    } else {
+      // 開発環境: プロジェクトルート相対
+      this.cardBaseImagesDir = path.resolve(cardBaseImagesDir);
+    }
     this.fontPath = 'C:/Windows/Fonts/meiryo.ttc';
   }
 
@@ -190,15 +198,12 @@ export class ImageCompositionConfig {
     
     try {
       const files = fs.readdirSync(resultDir);
-      console.log(`ImageCompositionConfig - Searching for photo_anime in ${resultDir}`);
-      console.log(`ImageCompositionConfig - Available files:`, files);
       
       const animeFile = files.find((file: string) => 
         file.startsWith('photo_anime_') && file.endsWith('.png')
       );
       
       if (animeFile) {
-        console.log(`ImageCompositionConfig - Found anime file: ${animeFile}`);
         return path.join(resultDir, animeFile);
       }
       

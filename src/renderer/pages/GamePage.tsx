@@ -7,9 +7,11 @@ import { useScreen } from '../contexts/ScreenContext';
 import { WINDOW_CONFIG } from '@shared/utils/constants';
 
 const GamePage: React.FC = () => {
+  
   const { handleGameEnd, resultDir, resetGameState } = useGameSession();
   const { config, loading: configLoading, error: configError } = useConfig();
   const { setCurrentScreen } = useScreen();
+  
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const gameEngineRef = useRef<PixiGameEngine | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -99,12 +101,14 @@ const GamePage: React.FC = () => {
             }
             try {
               const gameEngine = new PixiGameEngine(config);
+              
               // gameContainerRef.current はこの時点で存在するはず
               const container = gameContainerRef.current;
               if (!container) {
                 reject(new Error('ゲームコンテナが見つかりません'));
                 return;
               }
+              
               await gameEngine.initialize(container);
               
               if (abortController.signal.aborted) {
@@ -121,8 +125,11 @@ const GamePage: React.FC = () => {
         
         const timeoutPromise = new Promise<never>((_, reject) => {
           const timeoutId = setTimeout(() => {
-            reject(new Error('初期化が15秒でタイムアウトしました'));
-          }, 15000);
+            console.error('GamePage: CRITICAL - Initialization timeout reached (15 seconds)');
+            console.error('GamePage: This indicates a fundamental initialization failure');
+            console.error('GamePage: Check console for detailed error messages from PixiGameEngine and assets');
+            reject(new Error('初期化が15秒でタイムアウトしました - スプライト画像読み込みまたはPixiJS初期化の問題'));
+          }, 15000); // 15秒でタイムアウト（本番デバッグ用に延長）
           abortController.signal.addEventListener('abort', () => clearTimeout(timeoutId));
         });
         

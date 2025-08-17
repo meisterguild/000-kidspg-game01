@@ -32,8 +32,17 @@ class ElectronApp {
 
   private async loadConfig(): Promise<AppConfig | null> {
     try {
-      const configPath = path.join(app.getAppPath(), 'config.json');
+      let configPath: string;
+      if (app.isPackaged) {
+        // 本番環境: exeファイルと同じディレクトリにあるconfig.jsonを指す
+        configPath = path.join(path.dirname(app.getPath('exe')), 'config.json');
+      } else {
+        // 開発環境: プロジェクトルートにあるconfig.jsonを指す
+        configPath = path.join(app.getAppPath(), 'config.json');
+      }
+      
       const configContent = await fs.readFile(configPath, 'utf-8');
+      
       return JSON.parse(configContent);
     } catch (error) {
       console.error('設定ファイルの読み込みに失敗しました:', error);
@@ -42,6 +51,10 @@ class ElectronApp {
   }
 
   private initializeApp(): void {
+    // GPU プロセス クラッシュ対策のコマンドラインスイッチ
+    app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
+    app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor');
+    
     app.whenReady().then(async () => {
       // 設定ファイルを読み込む
       this.config = await this.loadConfig();
@@ -95,7 +108,9 @@ class ElectronApp {
         autoplayPolicy: 'no-user-gesture-required',
         // カメラとマイクアクセスを許可
         allowRunningInsecureContent: false,
-        experimentalFeatures: false
+        experimentalFeatures: false,
+        // GPU プロセス クラッシュ対策
+        backgroundThrottling: false
       },
       icon: path.join(__dirname, '../../../assets/icon.png'),
       title: 'KidsPG - よけまくり中'
@@ -106,7 +121,9 @@ class ElectronApp {
       this.mainWindow.loadURL('http://localhost:3000');
       this.mainWindow.webContents.openDevTools();
     } else {
-      this.mainWindow.loadFile(path.join(__dirname, '../../renderer/index.html'));
+      this.mainWindow.loadURL(
+        `file://${path.join(__dirname, "../../renderer/index.html")}`
+      );
     }
 
     this.mainWindow.on('closed', () => {
@@ -158,18 +175,31 @@ class ElectronApp {
         
         if (isDummy) {
           // ダミー画像の場合、dummy_photo.pngを直接コピー
-          const dummyPhotoPath = path.join(app.getAppPath(), 'assets', 'dummy_photo.png');
+          let dummyPhotoPath: string;
+          if (app.isPackaged) {
+            // 本番環境: exeファイルと同じディレクトリの assets フォルダ
+            dummyPhotoPath = path.join(path.dirname(app.getPath('exe')), 'assets', 'dummy_photo.png');
+          } else {
+            // 開発環境: プロジェクトルートの assets フォルダ
+            dummyPhotoPath = path.join(app.getAppPath(), 'src', 'renderer', 'assets', 'images', 'dummy_photo.png');
+          }
+          
           try {
             await fs.copyFile(dummyPhotoPath, filePath);
-            console.log(`Copied dummy_photo.png to: ${filePath}`);
-            
             // ダミー画像用のphoto_anime_*.pngも即座に作成
             const animePhotoPath = path.join(dirPath, `photo_anime_${dateTime}.png`);
             await fs.copyFile(dummyPhotoPath, animePhotoPath);
-            console.log(`Created photo_anime file from dummy_photo.png: ${animePhotoPath}`);
           } catch (copyError) {
             console.warn('Failed to copy dummy_photo.png, using generated image:', copyError);
             await fs.writeFile(filePath, base64Data, 'base64');
+            
+            // catchブロックでもphoto_anime_*.pngを作成
+            try {
+              const animePhotoPath = path.join(dirPath, `photo_anime_${dateTime}.png`);
+              await fs.writeFile(animePhotoPath, base64Data, 'base64');
+            } catch (animeError) {
+              console.error('Failed to create photo_anime file:', animeError);
+            }
           }
         } else {
           // 実画像の場合、通常通り保存
@@ -177,13 +207,21 @@ class ElectronApp {
         }
         
         if (isDummy) {
-          console.log(`ElectronApp - Dummy image detected for ${dateTime}, memorial card will be generated after result.json is saved`);
           // ダミー画像の場合：メモリアルカード生成はresult.json保存後に実行
         } else {
           // 実画像の場合：通常のComfyUI処理
           if (this.config?.comfyui) {
             try {
-              const templatePath = path.join(app.getAppPath(), this.config.comfyui.workflow.templatePath);
+              // テンプレートファイルのパス解決（開発環境・本番環境対応）
+              let templatePath: string;
+              if (app.isPackaged) {
+                // 本番環境: exeファイルと同じディレクトリの assets フォルダ
+                templatePath = path.join(path.dirname(app.getPath('exe')), this.config.comfyui.workflow.templatePath);
+              } else {
+                // 開発環境: プロジェクトルートの assets フォルダ
+                templatePath = path.join(app.getAppPath(), this.config.comfyui.workflow.templatePath);
+              }
+              
               const templateContent = await fs.readFile(templatePath, 'utf-8');
               const workflowTemplate = JSON.parse(templateContent);
 
@@ -211,29 +249,35 @@ class ElectronApp {
 
               const imageGeneratePath = path.join(dirPath, 'image_generate.json');
               await fs.writeFile(imageGeneratePath, JSON.stringify(workflowTemplate, null, 2));
-              console.log(`Created image_generate.json with processed workflow: ${imageGeneratePath}`);
 
               // ComfyUIが有効な場合、即座に画像をアップロード＆変換開始
               if (this.comfyUIService) {
                 try {
-                  console.log(`Starting pre-upload and transform for datetime: ${dateTime}`);
                   // 1. プリアップロード
                   await this.comfyUIService.preUploadImage(base64Data, dateTime);
-                  console.log(`Pre-upload completed for datetime: ${dateTime}`);
                   
                   // 2. 即座に変換開始
-                  const jobId = await this.comfyUIService.transformImage({
+                  await this.comfyUIService.transformImage({
                     imageData: base64Data,
                     datetime: dateTime,
                     resultDir: dirPath
                   });
-                  console.log(`ComfyUI transformation started immediately: ${jobId} for ${dateTime}`);
                 } catch (error) {
                   console.warn('Pre-upload or transform failed, will handle later:', error);
                 }
               }
             } catch (error) {
-              console.error('Failed to create image_generate.json:', error);
+              console.error('[ComfyUI] CRITICAL - Failed to process template or start transformation:', error);
+              console.error('[ComfyUI] Template path attempted:', this.config.comfyui.workflow.templatePath);
+              console.error('[ComfyUI] Error details:', {
+                type: typeof error,
+                name: error instanceof Error ? error.name : 'Unknown',
+                message: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : 'No stack'
+              });
+              
+              // ComfyUIが利用できない場合でも、ゲーム自体は継続する
+              console.warn('[ComfyUI] ComfyUI処理をスキップして続行します。画像生成は行われません。');
             }
           }
         }
@@ -268,12 +312,11 @@ class ElectronApp {
             if (photoStats.size === animeStats.size) {
               // 重複防止チェック
               if (this.memorialCardGenerationFlags.has(dateTime)) {
-                console.log(`ElectronApp - Memorial card generation already in progress/completed for: ${dateTime}`);
+                console.warn(`ElectronApp - Memorial card generation already in progress/completed for: ${dateTime}`);
                 return { success: true, filePath: filePath };
               }
               
               this.memorialCardGenerationFlags.add(dateTime);
-              console.log(`ElectronApp - Starting memorial card generation for dummy image: ${dateTime}`);
               
               setTimeout(async () => {
                 try {
@@ -282,10 +325,10 @@ class ElectronApp {
                   }
                 } catch (error) {
                   console.error('ElectronApp - Memorial card generation error:', error);
+                  // エラー時はフラグを削除してリトライ可能にする
+                  this.memorialCardGenerationFlags.delete(dateTime);
                 }
               }, 100);
-            } else {
-              console.log(`ElectronApp - AI-generated image detected, memorial card will be handled by ComfyUI completion`);
             }
           }
         } catch (checkError) {
@@ -338,7 +381,6 @@ class ElectronApp {
         const activeJobs = this.comfyUIService.getActiveJobs();
         const existingJob = activeJobs.find(job => job.datetime === datetime);
         if (existingJob) {
-          console.log(`ComfyUI job already exists for datetime: ${datetime}`);
           return { success: false, error: `Job already exists for ${datetime}` };
         }
 
@@ -348,7 +390,6 @@ class ElectronApp {
           resultDir
         });
 
-        console.log(`ComfyUI transformation started: ${jobId} for ${datetime}`);
         return { success: true, jobId };
       } catch (error) {
         console.error('ComfyUI transformation failed:', error);
@@ -415,6 +456,96 @@ class ElectronApp {
         return { success: false, error: String(error) };
       }
     });
+
+    // 新しいIPCハンドラ: アセットの絶対パスを取得
+    ipcMain.handle('get-asset-absolute-path', async (event, relativePath: string) => {
+      
+      try {
+        let assetPath: string;
+        
+        if (app.isPackaged) {
+          // 本番環境: ASARパッケージ内のdist/renderer/assetsフォルダのアセットにアクセス
+          // relativePath例: "assets/sounds/action.mp3" -> "dist/renderer/assets/action.mp3"
+          const assetFileName = relativePath.replace(/^assets\/(sounds|images)\//, '');
+          
+          assetPath = path.join(__dirname, '../../renderer/assets', assetFileName);
+          
+          // ファイル存在確認
+          try {
+            await fs.access(assetPath);
+          } catch (accessError) {
+            console.error(`main.ts: [PACKAGED] ❌ Asset file NOT FOUND: ${assetPath}`);
+            console.error(`main.ts: [PACKAGED] Access error:`, accessError);
+            
+            // 代替パスをいくつか試行
+            const alternativePaths = [
+              path.join(__dirname, '../renderer/assets', assetFileName),
+              path.join(__dirname, 'renderer/assets', assetFileName),
+              path.join(__dirname, '../../assets', assetFileName),
+              path.join(path.dirname(app.getPath('exe')), 'resources', relativePath)
+            ];
+            
+            let foundAlternative = false;
+            
+            for (const altPath of alternativePaths) {
+              try {
+                await fs.access(altPath);
+                assetPath = altPath;
+                foundAlternative = true;
+                break;
+              } catch {
+                // Continue to next alternative
+              }
+            }
+            
+            if (!foundAlternative) {
+              console.error(`main.ts: [PACKAGED] CRITICAL - No valid asset path found for: ${relativePath}`);
+            }
+          }
+        } else {
+          // 開発環境: src/renderer/assetsフォルダのアセットにアクセス
+          assetPath = path.join(app.getAppPath(), 'src/renderer', relativePath);
+          
+          // 開発環境でもファイル存在確認
+          try {
+            await fs.access(assetPath);
+          } catch (accessError) {
+            console.error(`main.ts: [DEV] ❌ Asset file NOT FOUND: ${assetPath}`);
+            console.error(`main.ts: [DEV] Access error:`, accessError);
+          }
+        }
+        
+        return assetPath;
+        
+      } catch (error) {
+        console.error('main.ts: CRITICAL - Error resolving asset path:', error);
+        console.error('main.ts: Error details:', {
+          type: typeof error,
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error)
+        });
+        
+        // フォールバック: 従来の方法
+        const appPath = app.isPackaged
+          ? path.dirname(app.getPath('exe'))
+          : app.getAppPath();
+
+        const resourcesPath = app.isPackaged
+          ? path.join(appPath, 'resources')
+          : appPath;
+
+        const absoluteAssetPath = path.join(resourcesPath, relativePath);
+        
+        // フォールバックパスも存在確認
+        try {
+          await fs.access(absoluteAssetPath);
+        } catch (fallbackError) {
+          console.error(`main.ts: [FALLBACK] ❌ Fallback path also not found: ${absoluteAssetPath}`, fallbackError);
+        }
+        
+        return absoluteAssetPath;
+      }
+    });
   }
 
   private async initializeServices(): Promise<void> {
@@ -428,7 +559,6 @@ class ElectronApp {
   private async initializeMemorialCardService(): Promise<void> {
     try {
       if (!this.config?.memorialCard) {
-        console.log('Memorial card configuration not found, skipping initialization');
         return;
       }
 
@@ -436,7 +566,6 @@ class ElectronApp {
         this.config.memorialCard,
         this.mainWindow || undefined
       );
-      console.log('Memorial Card Service initialized successfully');
     } catch (error) {
       console.error('Memorial Card Service initialization failed:', error);
       this.memorialCardService = null;
@@ -446,7 +575,6 @@ class ElectronApp {
   private async initializeComfyUI(): Promise<void> {
     try {
       if (!this.config?.comfyui) {
-        console.log('ComfyUI configuration not found, skipping initialization');
         return;
       }
 
@@ -461,10 +589,20 @@ class ElectronApp {
       // ComfyUI完了時のメモリアルカード生成コールバックを設定
       this.comfyUIService.setMemorialCardCallback(this.handleComfyUICompletion.bind(this));
       
-      console.log('ComfyUI Service initialized successfully');
     } catch (error) {
-      console.error('ComfyUI initialization failed:', error);
+      console.error('[ComfyUI] Service initialization failed:', error);
+      console.error('[ComfyUI] Config details:', {
+        hasConfig: !!this.config?.comfyui,
+        baseUrl: this.config?.comfyui?.baseUrl,
+        templatePath: this.config?.comfyui?.workflow?.templatePath
+      });
+      console.error('[ComfyUI] Error details:', {
+        type: typeof error,
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error)
+      });
       this.comfyUIService = null;
+      console.warn('[ComfyUI] ComfyUI機能は無効化されました。ゲームは画像生成なしで動作します。');
     }
   }
 
@@ -478,13 +616,11 @@ class ElectronApp {
     // 重複防止チェック（AI画像用）
     const dateTime = path.basename(resultDir);
     if (this.memorialCardGenerationFlags.has(dateTime)) {
-      console.log(`ElectronApp - Memorial card generation already completed for AI image: ${dateTime}`);
       return;
     }
 
     try {
       this.memorialCardGenerationFlags.add(dateTime);
-      console.log(`ElectronApp - Starting memorial card generation for AI image: ${jobId}`);
       await this.memorialCardService.generateFromAIImage(jobId, resultDir);
     } catch (error) {
       console.error('ElectronApp - Memorial card generation failed after ComfyUI completion:', error);
