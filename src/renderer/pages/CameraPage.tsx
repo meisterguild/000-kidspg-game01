@@ -252,6 +252,9 @@ const CameraPage: React.FC = () => {
                   className="w-full h-full object-cover"
                 />
               )}
+              <div className="face-guide-overlay">
+                <div className="face-guide-ellipse"></div>
+              </div>
               {!isCameraReady && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 text-white text-xl font-bold">
                   {cameraError ? 'カメラエラー' : '準備中...'}
