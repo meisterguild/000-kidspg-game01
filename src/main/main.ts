@@ -3,7 +3,8 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { ComfyUIService } from './services/comfyui-service';
 import { MemorialCardService } from './services/memorial-card-service';
-import type { AppConfig } from '@shared/types';
+import { ResultsManager } from './services/results-manager';
+import type { AppConfig, GameResult } from '@shared/types';
 import { WINDOW_CONFIG } from '../shared/utils/constants';
 
 // 日付を YYYYMMDD_HHMMSS 形式の文字列にフォーマットする
@@ -24,6 +25,7 @@ class ElectronApp {
   private config: AppConfig | null = null;
   private comfyUIService: ComfyUIService | null = null;
   private memorialCardService: MemorialCardService | null = null;
+  private resultsManager: ResultsManager | null = null;
   private memorialCardGenerationFlags = new Set<string>(); // 重複防止用フラグ
 
   constructor() {
@@ -70,8 +72,15 @@ class ElectronApp {
         });
       });
 
-      // resultsフォルダの存在を確認・作成
-      await this.ensureDirectoryExists('results');
+      // ResultsManagerを初期化
+      const resultsDir = app.isPackaged 
+        ? path.join(path.dirname(app.getPath('exe')), 'results')
+        : path.join(app.getAppPath(), 'results');
+      
+      // resultsフォルダの存在を確認・作成（正しいパスで）
+      await this.ensureDirectoryExistsAbsolute(resultsDir);
+      
+      this.resultsManager = new ResultsManager(resultsDir, this.config);
 
       this.createMainWindow();
       this.setupIPC();
@@ -112,7 +121,7 @@ class ElectronApp {
         // GPU プロセス クラッシュ対策
         backgroundThrottling: false
       },
-      icon: path.join(__dirname, '../../../assets/icon.png'),
+      icon: path.join(__dirname, '../../../assets/icon.ico'),
       title: 'KidsPG - よけまくり中'
     });
 
@@ -333,6 +342,19 @@ class ElectronApp {
           }
         } catch (checkError) {
           console.warn('ElectronApp - Error checking for dummy image memorial card generation:', checkError);
+        }
+        
+        // Update results.json
+        if (this.resultsManager) {
+          try {
+            console.log(`Updating results index for: ${dirPath}`);
+            await this.resultsManager.updateResults(dirPath, jsonData as GameResult);
+            console.log('Results index updated successfully');
+          } catch (error) {
+            console.error('Failed to update results index:', error);
+          }
+        } else {
+          console.error('ResultsManager not initialized');
         }
         
         return { success: true, filePath: filePath };
@@ -633,6 +655,15 @@ class ElectronApp {
       await fs.access(dirPath);
     } catch {
       await fs.mkdir(dirPath, { recursive: true });
+    }
+  }
+
+  private async ensureDirectoryExistsAbsolute(dirPath: string): Promise<void> {
+    try {
+      await fs.access(dirPath);
+    } catch {
+      await fs.mkdir(dirPath, { recursive: true });
+      console.log(`Created directory: ${dirPath}`);
     }
   }
 

@@ -55,6 +55,10 @@ export interface AppConfig {
     magickTimeout: number;
     cardBaseImagesDir: string;
   };
+  results?: {
+    maxRecent: number;
+    maxRanking: number;
+  };
 }
 
 // カメラ撮影用の型定義
@@ -88,3 +92,10 @@ export type {
   ComfyUIEventCallback,
   ComfyUIErrorCallback
 } from './comfyui';
+
+// Results関連の型定義をre-export
+export type {
+  RecentResultEntry,
+  RankingResultEntry,
+  ResultsData
+} from './results';
