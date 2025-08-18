@@ -159,8 +159,12 @@ class ElectronApp {
     });
 
     // ランキングHTMLファイルを読み込み
-    const rankingPath = path.join(process.cwd(), 'ranking.html');
-    this.rankingWindow.loadFile(rankingPath).catch(() => {
+    const rankingPath = app.isPackaged 
+      ? path.join(path.dirname(app.getPath('exe')), 'ranking.html')
+      : path.join(process.cwd(), 'ranking.html');
+    
+    this.rankingWindow.loadFile(rankingPath).catch((error) => {
+      console.error(`Ranking file not found: ${rankingPath}`, error);
       // ファイルが存在しない場合はプレースホルダーを表示
       this.rankingWindow?.loadURL('data:text/html,<h1>ランキング準備中...</h1>');
     });

@@ -90,6 +90,10 @@
       {
         "from": "card_base_images",
         "to": "card_base_images"
+      },
+      {
+        "from": "ranking.html",
+        "to": "."
       }
     ],
     "mac": {
