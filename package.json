@@ -34,6 +34,8 @@
     "electron": "^33.0.0",
     "electron-builder": "^26.0.12",
     "eslint": "^8.57.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react": "^7.35.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "postcss": "^8.4.0",
@@ -92,7 +94,7 @@
         "to": "card_base_images"
       },
       {
-        "from": "ranking.html",
+        "from": "dist/renderer/ranking.html",
         "to": "."
       }
     ],

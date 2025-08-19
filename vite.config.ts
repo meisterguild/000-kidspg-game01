@@ -11,8 +11,13 @@ export default defineConfig({
     emptyOutDir: true,
     assetsDir: 'assets',
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'src/renderer/index.html'),
+        ranking: resolve(__dirname, 'src/renderer/ranking.html'),
+      },
       output: {
         assetFileNames: `assets/[name][extname]`,
+        entryFileNames: `[name].js`, // Ensure separate JS files for each entry
       },
     },
   },

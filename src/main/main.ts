@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { ComfyUIService } from './services/comfyui-service';
 import { MemorialCardService } from './services/memorial-card-service';
+import { RankingService } from './services/ranking-service';
 import { ResultsManager } from './services/results-manager';
 import type { AppConfig, GameResult } from '@shared/types';
 import { WINDOW_CONFIG } from '../shared/utils/constants';
@@ -26,8 +27,8 @@ class ElectronApp {
   private comfyUIService: ComfyUIService | null = null;
   private memorialCardService: MemorialCardService | null = null;
   private resultsManager: ResultsManager | null = null;
-  private memorialCardGenerationFlags = new Map<string, 'dummy_inprogress' | 'dummy_completed' | 'ai_inprogress' | 'ai_completed'>(); // 生成状態管理フラグ
-  private exitConfirmed = false; // 終了確認済みフラグ
+  private rankingService: RankingService | null = null; // ADDED
+  private memorialCardGenerationFlags = new Set<string>(); // 重複防止用フラグ
 
   constructor() {
     this.initializeApp();
@@ -54,14 +55,6 @@ class ElectronApp {
   }
 
   private initializeApp(): void {
-    // 終了前確認イベントハンドラー
-    app.on('before-quit', async (event) => {
-      if (!this.exitConfirmed) {
-        event.preventDefault();
-        await this.showExitConfirmation();
-      }
-    });
-
     // GPU プロセス クラッシュ対策のコマンドラインスイッチ
     app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
     app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor');
@@ -97,16 +90,11 @@ class ElectronApp {
     });
 
     app.on('window-all-closed', async () => {
-      // macOS以外では、すべてのウィンドウが閉じられた時の処理
-      // ただし、exitConfirmedがtrueの場合のみ実際に終了する
+      if (this.comfyUIService) {
+        await this.comfyUIService.destroy();
+      }
       if (process.platform !== 'darwin') {
-        if (this.exitConfirmed) {
-          if (this.comfyUIService) {
-            await this.comfyUIService.destroy();
-          }
-          app.quit();
-        }
-        // exitConfirmedがfalseの場合は何もしない（ユーザーがキャンセルした場合）
+        app.quit();
       }
     });
 
@@ -149,14 +137,6 @@ class ElectronApp {
       );
     }
 
-    // ウィンドウのXボタンクリック時に終了確認を表示
-    this.mainWindow.on('close', async (event) => {
-      if (!this.exitConfirmed) {
-        event.preventDefault();
-        await this.showExitConfirmation();
-      }
-    });
-
     this.mainWindow.on('closed', () => {
       this.mainWindow = null;
     });
@@ -175,21 +155,25 @@ class ElectronApp {
       parent: this.mainWindow || undefined,
       webPreferences: {
         nodeIntegration: false,
-        contextIsolation: true
+        contextIsolation: true,
+        preload: path.join(__dirname, 'preload.js'),
       },
       title: 'ランキング表示'
     });
 
-    // ランキングHTMLファイルを読み込み
-    const rankingPath = app.isPackaged 
-      ? path.join(path.dirname(app.getPath('exe')), 'ranking.html')
-      : path.join(process.cwd(), 'ranking.html');
-    
-    this.rankingWindow.loadFile(rankingPath).catch((error) => {
-      console.error(`Ranking file not found: ${rankingPath}`, error);
-      // ファイルが存在しない場合はプレースホルダーを表示
-      this.rankingWindow?.loadURL('data:text/html,<h1>ランキング準備中...</h1>');
-    });
+    // 開発環境ではViteサーバー、本番環境では静的ファイルを読み込み
+    if (process.env.NODE_ENV === 'development') {
+      this.rankingWindow.loadURL('http://localhost:3000/ranking.html');
+      this.rankingWindow.webContents.openDevTools();
+    } else {
+      const rankingPath = path.join(__dirname, '../../renderer/ranking.html');
+      this.rankingWindow.loadFile(rankingPath).catch((error) => {
+        console.error(`Ranking file not found: ${rankingPath}`, error);
+        // ファイルが存在しない場合はプレースホルダーを表示
+        this.rankingWindow?.loadURL('data:text/html,<h1>ランキング準備中...</h1>');
+      });
+      this.rankingWindow.webContents.openDevTools();
+    }
 
     this.rankingWindow.on('closed', () => {
       this.rankingWindow = null;
@@ -261,28 +245,24 @@ class ElectronApp {
               const workflowTemplate = JSON.parse(templateContent);
 
               // 変数置換
-              // SaveImageノードのfilename_prefixを動的に検索・更新
-              const outputPrefix = `${this.config.comfyui.workflow.outputPrefix}_${dateTime}`;
-              for (const nodeId in workflowTemplate) {
-                const node = workflowTemplate[nodeId];
-                if (node && node.class_type === 'SaveImage' && node.inputs) {
-                  const saveImageInputs = node.inputs;
-                  if (typeof saveImageInputs.filename_prefix === 'string' && saveImageInputs.filename_prefix.includes('${filename_prefix}')) {
-                    saveImageInputs.filename_prefix = saveImageInputs.filename_prefix.replace('${filename_prefix}', outputPrefix);
-                    console.log(`Updated SaveImage node ${nodeId}: ${outputPrefix}`);
-                  }
+              // SaveImageノード(node 9)のfilename_prefixを更新（日時付き）
+              if (workflowTemplate['9'] && workflowTemplate['9'].inputs) {
+                const saveImageInputs = workflowTemplate['9'].inputs;
+                const outputPrefix = `${this.config.comfyui.workflow.outputPrefix}_${dateTime}`;
+                if (typeof saveImageInputs.filename_prefix === 'string' && saveImageInputs.filename_prefix.includes('${filename_prefix}')) {
+                  saveImageInputs.filename_prefix = saveImageInputs.filename_prefix.replace('${filename_prefix}', outputPrefix);
+                } else {
+                  saveImageInputs.filename_prefix = outputPrefix;
                 }
               }
               
-              // LoadImageノードのimageファイル名を動的に検索・更新
-              for (const nodeId in workflowTemplate) {
-                const node = workflowTemplate[nodeId];
-                if (node && node.class_type === 'LoadImage' && node.inputs) {
-                  const loadImageInputs = node.inputs;
-                  if (typeof loadImageInputs.image === 'string' && loadImageInputs.image.includes('${photo_png}')) {
-                    loadImageInputs.image = loadImageInputs.image.replace('${photo_png}', photoFileName);
-                    console.log(`Updated LoadImage node ${nodeId}: ${photoFileName}`);
-                  }
+              // LoadImageノード(node 10)のimageファイル名を更新（日時付き）
+              if (workflowTemplate['10'] && workflowTemplate['10'].inputs) {
+                const loadImageInputs = workflowTemplate['10'].inputs;
+                if (typeof loadImageInputs.image === 'string' && loadImageInputs.image.includes('${photo_png}')) {
+                  loadImageInputs.image = loadImageInputs.image.replace('${photo_png}', photoFileName);
+                } else {
+                  loadImageInputs.image = photoFileName;
                 }
               }
 
@@ -334,43 +314,44 @@ class ElectronApp {
         const filePath = path.join(dirPath, 'result.json');
         await fs.writeFile(filePath, JSON.stringify(jsonData, null, 2));
         
+        // result.json保存後、ダミー画像の場合はメモリアルカード生成を実行
         const dateTime = path.basename(dirPath);
+        const photoPath = path.join(dirPath, `photo_${dateTime}.png`);
+        const animePhotoPath = path.join(dirPath, `photo_anime_${dateTime}.png`);
         
-        if (this.memorialCardService) {
-          // 既に何らかの処理が進行中の場合は警告を出してスキップ
-          if (this.memorialCardGenerationFlags.has(dateTime)) {
-            console.warn(`ElectronApp - Memorial card generation already in progress for: ${dateTime}`);
-            return { success: true, filePath: filePath };
-          }
-          
-          // ダミーカード生成処理を開始
-          this.memorialCardGenerationFlags.set(dateTime, 'dummy_inprogress');
-          
-          setTimeout(async () => {
-            try {
-              if (this.memorialCardService) {
-                const result = await this.memorialCardService.generateDummyMemorialCard(
-                  dateTime,
-                  dirPath,
-                  jsonData as GameResult
-                );
-                
-                if (result.success) {
-                  // ダミーカード生成完了
-                  this.memorialCardGenerationFlags.set(dateTime, 'dummy_completed');
-                  console.log(`ElectronApp - Dummy memorial card generated successfully: ${result.outputPath}`);
-                } else {
-                  console.error(`ElectronApp - Dummy memorial card generation failed: ${result.error}`);
+        // photo_anime_*.pngが存在し、ComfyUIによる生成でない場合（ダミー画像）
+        try {
+          const animeExists = await fs.access(animePhotoPath).then(() => true).catch(() => false);
+          if (animeExists && this.memorialCardService) {
+            // ファイルサイズでダミー画像かどうかを簡易判定
+            const photoStats = await fs.stat(photoPath);
+            const animeStats = await fs.stat(animePhotoPath);
+            
+            // 同じサイズならダミー画像からのコピー
+            if (photoStats.size === animeStats.size) {
+              // 重複防止チェック
+              if (this.memorialCardGenerationFlags.has(dateTime)) {
+                console.warn(`ElectronApp - Memorial card generation already in progress/completed for: ${dateTime}`);
+                return { success: true, filePath: filePath };
+              }
+              
+              this.memorialCardGenerationFlags.add(dateTime);
+              
+              setTimeout(async () => {
+                try {
+                  if (this.memorialCardService) {
+                    await this.memorialCardService.generateFromDummyImage(dateTime, dirPath);
+                  }
+                } catch (error) {
+                  console.error('ElectronApp - Memorial card generation error:', error);
                   // エラー時はフラグを削除してリトライ可能にする
                   this.memorialCardGenerationFlags.delete(dateTime);
                 }
-              }
-            } catch (error) {
-              console.error('ElectronApp - Dummy memorial card generation error:', error);
-              // エラー時はフラグを削除してリトライ可能にする
-              this.memorialCardGenerationFlags.delete(dateTime);
+              }, 100);
             }
-          }, 100);
+          }
+        } catch (checkError) {
+          console.warn('ElectronApp - Error checking for dummy image memorial card generation:', checkError);
         }
         
         // Update results.json
@@ -403,6 +384,24 @@ class ElectronApp {
       if (this.rankingWindow) {
         this.rankingWindow.close();
       }
+    });
+
+    // ランキングデータ取得
+    ipcMain.handle('ranking:get-data', async () => {
+      if (!this.rankingService) {
+        console.error('RankingService not initialized.');
+        return null;
+      }
+      return await this.rankingService.getRankingData();
+    });
+
+    // ランキング設定取得
+    ipcMain.handle('ranking:get-config', async () => {
+      if (!this.rankingService) {
+        console.error('RankingService not initialized.');
+        return null;
+      }
+      return await this.rankingService.getRankingConfig();
     });
 
     // 設定情報を取得
@@ -597,42 +596,6 @@ class ElectronApp {
         return absoluteAssetPath;
       }
     });
-
-    // 終了確認関連のIPCハンドラー
-    ipcMain.handle('get-comfyui-status-for-exit', async () => {
-      if (this.comfyUIService) {
-        try {
-          const activeJobs = this.comfyUIService.getActiveJobs();
-          return {
-            activeJobs,
-            internalQueueLength: activeJobs.length,
-            serverQueueRunning: 0,
-            serverQueuePending: 0
-          };
-        } catch (error) {
-          console.error('Failed to get ComfyUI status for exit:', error);
-          return { 
-            activeJobs: [], 
-            internalQueueLength: 0,
-            serverQueueRunning: 0,
-            serverQueuePending: 0
-          };
-        }
-      }
-      return { 
-        activeJobs: [], 
-        internalQueueLength: 0,
-        serverQueueRunning: 0,
-        serverQueuePending: 0
-      };
-    });
-
-    ipcMain.handle('confirm-exit', async (event, confirmed: boolean) => {
-      if (confirmed) {
-        this.exitConfirmed = true;
-        app.quit();
-      }
-    });
   }
 
   private async initializeServices(): Promise<void> {
@@ -641,6 +604,10 @@ class ElectronApp {
     
     // ComfyUIサービスは設定がある場合のみ初期化
     await this.initializeComfyUI();
+
+    // RankingServiceを初期化
+    this.rankingService = new RankingService();
+    this.setupRankingWatcher();
   }
 
   private async initializeMemorialCardService(): Promise<void> {
@@ -693,6 +660,17 @@ class ElectronApp {
     }
   }
 
+  private setupRankingWatcher(): void { // ADDED
+    if (this.rankingService) {
+      this.rankingService.watchResults((data) => {
+        console.log('Ranking data updated, sending to renderer');
+        if (this.rankingWindow && !this.rankingWindow.isDestroyed()) {
+          this.rankingWindow.webContents.send('ranking:data-updated', data);
+        }
+      });
+    }
+  } // ADDED
+
 
   private async handleComfyUICompletion(jobId: string, resultDir: string): Promise<void> {
     if (!this.memorialCardService) {
@@ -700,36 +678,17 @@ class ElectronApp {
       return;
     }
 
+    // 重複防止チェック（AI画像用）
     const dateTime = path.basename(resultDir);
-    const currentState = this.memorialCardGenerationFlags.get(dateTime);
-
-    // ダミーカード生成が完了している場合のみ、AI画像での生成に進む
-    if (currentState !== 'dummy_completed') {
-      console.warn(`ElectronApp - AI card generation skipped for ${dateTime} because dummy card generation is not completed. State: ${currentState}`);
+    if (this.memorialCardGenerationFlags.has(dateTime)) {
       return;
     }
 
     try {
-      // AIカード生成処理を開始
-      this.memorialCardGenerationFlags.set(dateTime, 'ai_inprogress');
+      this.memorialCardGenerationFlags.add(dateTime);
       await this.memorialCardService.generateFromAIImage(jobId, resultDir);
-      
-      // AIカード生成完了
-      this.memorialCardGenerationFlags.set(dateTime, 'ai_completed');
-      console.log(`ElectronApp - AI memorial card generated successfully for: ${dateTime}`);
-
-      // AI画像でのメモリアルカード生成完了後、results.jsonのパスを更新
-      if (this.resultsManager) {
-        try {
-          await this.resultsManager.updateMemorialCardPath(resultDir);
-          console.log(`ElectronApp - Memorial card path updated for AI image completion: ${dateTime}`);
-        } catch (pathUpdateError) {
-          console.error('ElectronApp - Failed to update memorial card path:', pathUpdateError);
-        }
-      }
     } catch (error) {
       console.error('ElectronApp - Memorial card generation failed after ComfyUI completion:', error);
-      // エラーが発生した場合、フラグは 'ai_inprogress' のまま残るため、デバッグに役立つ
     }
   }
 
@@ -748,41 +707,6 @@ class ElectronApp {
     } catch {
       await fs.mkdir(dirPath, { recursive: true });
       console.log(`Created directory: ${dirPath}`);
-    }
-  }
-
-  private async showExitConfirmation(): Promise<void> {
-    try {
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        // ComfyUI状態を取得
-        let comfyUIStatus = { 
-          activeJobs: [] as Array<{datetime: string, status: string, duration: number}>, 
-          internalQueueLength: 0,
-          serverQueueRunning: 0,
-          serverQueuePending: 0
-        };
-        if (this.comfyUIService) {
-          try {
-            const activeJobs = this.comfyUIService.getActiveJobs();
-            comfyUIStatus = {
-              activeJobs,
-              internalQueueLength: activeJobs.length,
-              serverQueueRunning: 0,
-              serverQueuePending: 0
-            };
-          } catch (error) {
-            console.error('Failed to get ComfyUI status for exit confirmation:', error);
-          }
-        }
-
-        // レンダラープロセスに終了確認ダイアログの表示を要求
-        this.mainWindow.webContents.send('show-exit-confirmation', comfyUIStatus);
-      }
-    } catch (error) {
-      console.error('Failed to show exit confirmation:', error);
-      // エラー時は強制終了を許可
-      this.exitConfirmed = true;
-      app.quit();
     }
   }
 
