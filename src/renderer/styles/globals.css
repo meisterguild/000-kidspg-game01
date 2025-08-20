@@ -225,6 +225,25 @@
   .w-3\/10 {
     width: 30%;
   }
+
+  .animate-scroll {
+    display: flex;
+    width: max-content;
+    animation: scroll 40s linear infinite;
+  }
+
+  .animate-scroll-delay {
+    animation-delay: -20s;
+  }
+
+  @keyframes scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
 }
 
 /* PixiJSキャンバス用スタイル */

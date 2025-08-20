@@ -29,6 +29,7 @@ class ElectronApp {
   private resultsManager: ResultsManager | null = null;
   private rankingService: RankingService | null = null; // ADDED
   private memorialCardGenerationFlags = new Set<string>(); // 重複防止用フラグ
+  private exitConfirmed = false; // 終了確認済みフラグ
 
   constructor() {
     this.initializeApp();
@@ -55,6 +56,14 @@ class ElectronApp {
   }
 
   private initializeApp(): void {
+    // 終了前確認イベントハンドラー
+    app.on('before-quit', async (event) => {
+      if (!this.exitConfirmed) {
+        event.preventDefault();
+        await this.showExitConfirmation();
+      }
+    });
+
     // GPU プロセス クラッシュ対策のコマンドラインスイッチ
     app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
     app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor');
@@ -90,11 +99,16 @@ class ElectronApp {
     });
 
     app.on('window-all-closed', async () => {
-      if (this.comfyUIService) {
-        await this.comfyUIService.destroy();
-      }
+      // macOS以外では、すべてのウィンドウが閉じられた時の処理
+      // ただし、exitConfirmedがtrueの場合のみ実際に終了する
       if (process.platform !== 'darwin') {
-        app.quit();
+        if (this.exitConfirmed) {
+          if (this.comfyUIService) {
+            await this.comfyUIService.destroy();
+          }
+          app.quit();
+        }
+        // exitConfirmedがfalseの場合は何もしない（ユーザーがキャンセルした場合）
       }
     });
 
@@ -136,6 +150,14 @@ class ElectronApp {
         `file://${path.join(__dirname, "../../renderer/index.html")}`
       );
     }
+
+    // ウィンドウのXボタンクリック時に終了確認を表示
+    this.mainWindow.on('close', async (event) => {
+      if (!this.exitConfirmed) {
+        event.preventDefault();
+        await this.showExitConfirmation();
+      }
+    });
 
     this.mainWindow.on('closed', () => {
       this.mainWindow = null;
@@ -596,6 +618,60 @@ class ElectronApp {
         return absoluteAssetPath;
       }
     });
+
+    // 画像のデータURLを取得する
+    ipcMain.handle('get-image-data-url', async (event, relativePath: string) => {
+      try {
+        const resultsDir = app.isPackaged
+          ? path.join(path.dirname(app.getPath('exe')), 'results')
+          : path.join(app.getAppPath(), 'results');
+        
+        const imagePath = path.join(resultsDir, relativePath);
+
+        const data = await fs.readFile(imagePath);
+        const base64 = Buffer.from(data).toString('base64');
+        return `data:image/png;base64,${base64}`;
+      } catch (error) {
+        console.error(`Failed to get image data url for ${relativePath}:`, error);
+        return null;
+      }
+    });
+
+    // 終了確認関連のIPCハンドラー
+    ipcMain.handle('get-comfyui-status-for-exit', async () => {
+      if (this.comfyUIService) {
+        try {
+          const activeJobs = this.comfyUIService.getActiveJobs();
+          return {
+            activeJobs,
+            internalQueueLength: activeJobs.length,
+            serverQueueRunning: 0,
+            serverQueuePending: 0
+          };
+        } catch (error) {
+          console.error('Failed to get ComfyUI status for exit:', error);
+          return { 
+            activeJobs: [], 
+            internalQueueLength: 0,
+            serverQueueRunning: 0,
+            serverQueuePending: 0
+          };
+        }
+      }
+      return { 
+        activeJobs: [], 
+        internalQueueLength: 0,
+        serverQueueRunning: 0,
+        serverQueuePending: 0
+      };
+    });
+
+    ipcMain.handle('confirm-exit', async (event, confirmed: boolean) => {
+      if (confirmed) {
+        this.exitConfirmed = true;
+        app.quit();
+      }
+    });
   }
 
   private async initializeServices(): Promise<void> {
@@ -707,6 +783,41 @@ class ElectronApp {
     } catch {
       await fs.mkdir(dirPath, { recursive: true });
       console.log(`Created directory: ${dirPath}`);
+    }
+  }
+
+  private async showExitConfirmation(): Promise<void> {
+    try {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        // ComfyUI状態を取得
+        let comfyUIStatus = { 
+          activeJobs: [] as Array<{datetime: string, status: string, duration: number}>, 
+          internalQueueLength: 0,
+          serverQueueRunning: 0,
+          serverQueuePending: 0
+        };
+        if (this.comfyUIService) {
+          try {
+            const activeJobs = this.comfyUIService.getActiveJobs();
+            comfyUIStatus = {
+              activeJobs,
+              internalQueueLength: activeJobs.length,
+              serverQueueRunning: 0,
+              serverQueuePending: 0
+            };
+          } catch (error) {
+            console.error('Failed to get ComfyUI status for exit confirmation:', error);
+          }
+        }
+
+        // レンダラープロセスに終了確認ダイアログの表示を要求
+        this.mainWindow.webContents.send('show-exit-confirmation', comfyUIStatus);
+      }
+    } catch (error) {
+      console.error('Failed to show exit confirmation:', error);
+      // エラー時は強制終了を許可
+      this.exitConfirmed = true;
+      app.quit();
     }
   }
 

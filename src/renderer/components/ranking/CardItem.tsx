@@ -1,28 +1,74 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { RecentEntry, RankingTopEntry } from '@shared/types/ranking';
 import { AppConfig } from '@shared/types';
 
 interface CardItemProps {
   entry: RecentEntry | RankingTopEntry;
-  config: AppConfig['ranking'] | undefined; // Changed any to AppConfig['ranking'] | undefined
+  config: AppConfig['ranking'] | undefined;
 }
 
 const CardItem: React.FC<CardItemProps> = ({ entry, config }) => {
-  // Determine if it's a ranking entry to show rank
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadImage = async () => {
+      if (entry.memorialCardPath) {
+        try {
+          setLoading(true);
+          const url = await window.electronAPI.getImageDataUrl(entry.memorialCardPath);
+          setImageUrl(url);
+        } catch (error) {
+          console.error('Failed to load image:', error);
+          setImageUrl(null);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+
+    loadImage();
+  }, [entry.memorialCardPath]);
+
   const isRankingEntry = (entry as RankingTopEntry).rank !== undefined;
+
+  // ランクに応じてスタイルを動的に決定
+  let rankStyle = "";
+  if (isRankingEntry) {
+    const rank = (entry as RankingTopEntry).rank;
+    if (rank === 1) {
+      // 1位: 金色
+      rankStyle = "text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-amber-500 [text-shadow:0_2px_2px_rgba(0,0,0,0.4)]";
+    } else if (rank === 2) {
+      // 2位: 銀色
+      rankStyle = "text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-slate-200 to-gray-400 [text-shadow:0_2px_2px_rgba(0,0,0,0.5)]";
+    } else if (rank === 3) {
+      // 3位: 銅色
+      rankStyle = "text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-orange-300 to-amber-600 [text-shadow:0_2px_2px_rgba(0,0,0,0.4)]";
+    } else {
+      // 4位以下: 白色
+      rankStyle = "text-3xl font-semibold text-white";
+    }
+  }
 
   return (
     <div
-      className="flex-shrink-0 bg-gray-700 p-3 rounded-md flex flex-col items-center justify-center"
-      style={{ width: config?.tileSize || 376, height: config?.tileSize || 376 }} // Use config for size
+      className="flex-shrink-0 bg-gradient-to-b from-slate-700 to-slate-800 border border-cyan-400/20 rounded-lg p-3 shadow-lg flex flex-col items-center justify-center"
+      style={{ width: config?.tileSize || 376, height: config?.tileSize || 376 }}
     >
-      {isRankingEntry && <p className="text-lg font-semibold">Rank: {(entry as RankingTopEntry).rank}</p>}
-      <p className="text-lg font-semibold">Score: {entry.score}</p>
-      {/* Image Placeholder - will implement actual image loading later */}
-      <div className="w-full h-3/4 bg-gray-600 flex items-center justify-center text-xs mt-2">
-        Image Placeholder
+      {isRankingEntry && <p className={rankStyle}>{(entry as RankingTopEntry).rank}位</p>}
+      
+      <div className="w-full h-4/5 bg-gray-600/50 rounded-md flex items-center justify-center text-xs mt-2">
+        {loading ? (
+          <p>Loading Image...</p>
+        ) : imageUrl ? (
+          <img src={imageUrl} alt={`Memorial Card for score ${entry.score}`} className="max-w-full max-h-full object-contain" />
+        ) : (
+          <p>Image Not Available</p>
+        )}
       </div>
-      {/* Add more details like nickname, playedAt etc. as needed */}
     </div>
   );
 };

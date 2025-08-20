@@ -44,7 +44,7 @@ const RankingPage: React.FC = () => {
 
       {/* Recent Plays Section */}
       <div className="flex-1 flex flex-col justify-center items-center">
-        <h2 className="text-4xl font-bold mb-4">最近のプレイ</h2>
+        <h2 className="text-4xl font-bold mb-4">みんなの きろく</h2>
         <RecentList entries={rankingData.recent} config={rankingConfig} /> {/* Use RecentList component */}
       </div>
     </div>
