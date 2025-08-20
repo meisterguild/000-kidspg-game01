@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { GameResult } from '@shared/types';
+import type { RankingData } from '@shared/types/ranking';
 import type { 
   ComfyUIEventCallback, 
   ComfyUIErrorCallback,
@@ -27,6 +28,13 @@ const electronAPI = {
 
   // 設定ファイルを再読み込み
   reloadConfig: () => ipcRenderer.invoke('reload-config'),
+
+  // ランキング関連API
+  getRankingData: () => ipcRenderer.invoke('ranking:get-data'),
+  getRankingConfig: () => ipcRenderer.invoke('ranking:get-config'),
+  onRankingDataUpdated: (callback: (data: RankingData) => void) => {
+    ipcRenderer.on('ranking:data-updated', (_, data) => callback(data));
+  },
 
   // ComfyUI API
   comfyui: {

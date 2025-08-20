@@ -99,7 +99,7 @@ const TopPage: React.FC = () => {
         
         <div className="absolute top-4 right-4">
           <button 
-            className="text-blue-400 hover:text-blue-300 underline"
+            className="game-button"
             onClick={() => window.electronAPI?.showRankingWindow()}
           >
             ランキング表示
