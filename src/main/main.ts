@@ -26,7 +26,7 @@ class ElectronApp {
   private comfyUIService: ComfyUIService | null = null;
   private memorialCardService: MemorialCardService | null = null;
   private resultsManager: ResultsManager | null = null;
-  private memorialCardGenerationFlags = new Set<string>(); // 重複防止用フラグ
+  private memorialCardGenerationFlags = new Map<string, 'dummy_inprogress' | 'dummy_completed' | 'ai_inprogress' | 'ai_completed'>(); // 生成状態管理フラグ
   private exitConfirmed = false; // 終了確認済みフラグ
 
   constructor() {
@@ -334,19 +334,18 @@ class ElectronApp {
         const filePath = path.join(dirPath, 'result.json');
         await fs.writeFile(filePath, JSON.stringify(jsonData, null, 2));
         
-        // result.json保存後、常にダミーメモリアルカード生成を実行
         const dateTime = path.basename(dirPath);
         
         if (this.memorialCardService) {
-          // 重複防止チェック
+          // 既に何らかの処理が進行中の場合は警告を出してスキップ
           if (this.memorialCardGenerationFlags.has(dateTime)) {
-            console.warn(`ElectronApp - Memorial card generation already in progress/completed for: ${dateTime}`);
+            console.warn(`ElectronApp - Memorial card generation already in progress for: ${dateTime}`);
             return { success: true, filePath: filePath };
           }
           
-          this.memorialCardGenerationFlags.add(dateTime);
+          // ダミーカード生成処理を開始
+          this.memorialCardGenerationFlags.set(dateTime, 'dummy_inprogress');
           
-          // ダミーメモリアルカード生成を非同期実行
           setTimeout(async () => {
             try {
               if (this.memorialCardService) {
@@ -357,9 +356,13 @@ class ElectronApp {
                 );
                 
                 if (result.success) {
+                  // ダミーカード生成完了
+                  this.memorialCardGenerationFlags.set(dateTime, 'dummy_completed');
                   console.log(`ElectronApp - Dummy memorial card generated successfully: ${result.outputPath}`);
                 } else {
                   console.error(`ElectronApp - Dummy memorial card generation failed: ${result.error}`);
+                  // エラー時はフラグを削除してリトライ可能にする
+                  this.memorialCardGenerationFlags.delete(dateTime);
                 }
               }
             } catch (error) {
@@ -697,16 +700,24 @@ class ElectronApp {
       return;
     }
 
-    // 重複防止チェック（AI画像用）
     const dateTime = path.basename(resultDir);
-    if (this.memorialCardGenerationFlags.has(dateTime)) {
+    const currentState = this.memorialCardGenerationFlags.get(dateTime);
+
+    // ダミーカード生成が完了している場合のみ、AI画像での生成に進む
+    if (currentState !== 'dummy_completed') {
+      console.warn(`ElectronApp - AI card generation skipped for ${dateTime} because dummy card generation is not completed. State: ${currentState}`);
       return;
     }
 
     try {
-      this.memorialCardGenerationFlags.add(dateTime);
+      // AIカード生成処理を開始
+      this.memorialCardGenerationFlags.set(dateTime, 'ai_inprogress');
       await this.memorialCardService.generateFromAIImage(jobId, resultDir);
       
+      // AIカード生成完了
+      this.memorialCardGenerationFlags.set(dateTime, 'ai_completed');
+      console.log(`ElectronApp - AI memorial card generated successfully for: ${dateTime}`);
+
       // AI画像でのメモリアルカード生成完了後、results.jsonのパスを更新
       if (this.resultsManager) {
         try {
@@ -718,6 +729,7 @@ class ElectronApp {
       }
     } catch (error) {
       console.error('ElectronApp - Memorial card generation failed after ComfyUI completion:', error);
+      // エラーが発生した場合、フラグは 'ai_inprogress' のまま残るため、デバッグに役立つ
     }
   }
 
