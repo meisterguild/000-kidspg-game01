@@ -74,6 +74,16 @@ const electronAPI = {
 
   // 新しいAPI: アセットの絶対パスを取得
   getAssetAbsolutePath: (relativePath: string) => ipcRenderer.invoke('get-asset-absolute-path', relativePath),
+
+  // 終了確認関連API
+  getComfyUIStatusForExit: () => ipcRenderer.invoke('get-comfyui-status-for-exit'),
+  confirmExit: (confirmed: boolean) => ipcRenderer.invoke('confirm-exit', confirmed),
+  onShowExitConfirmation: (callback: (comfyUIStatus: unknown) => void) => {
+    ipcRenderer.on('show-exit-confirmation', (_, data) => callback(data));
+  },
+  removeExitConfirmationListener: () => {
+    ipcRenderer.removeAllListeners('show-exit-confirmation');
+  },
 };
 
 // contextBridgeを使ってRenderer側にAPIを公開

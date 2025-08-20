@@ -14,11 +14,24 @@ import GamePage from './pages/GamePage';
 import ResultPage from './pages/ResultPage';
 import { TestPage } from './test/TestPage';
 
+// 終了確認ダイアログ
+import { ExitConfirmationDialog } from './components/ExitConfirmationDialog';
+import { useExitConfirmation } from './hooks/useExitConfirmation';
+
 // 画面のレンダリングと副作用を担当するコンポーネント
 const AppContent: React.FC = () => {
   const { currentScreen, setCurrentScreen, assetsLoaded, setAssetsLoaded } = useScreen();
   const { resetGameState } = useGameSession();
   const { loading: configLoading, error: configError } = useConfig();
+  
+  // 終了確認フック
+  const {
+    isDialogOpen,
+    step,
+    comfyUIStatus,
+    handleConfirm,
+    handleCancel,
+  } = useExitConfirmation();
 
   // アセット読み込み
   useEffect(() => {
@@ -102,7 +115,20 @@ const AppContent: React.FC = () => {
     }
   };
 
-  return <div className="app">{renderCurrentScreen()}</div>;
+  return (
+    <div className="app">
+      {renderCurrentScreen()}
+      
+      {/* 終了確認ダイアログ */}
+      <ExitConfirmationDialog
+        isOpen={isDialogOpen}
+        step={step}
+        comfyUIStatus={comfyUIStatus}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
+    </div>
+  );
 };
 
 // AppコンポーネントはProviderをまとめる役割
