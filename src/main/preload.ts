@@ -83,6 +83,9 @@ const electronAPI = {
   // 新しいAPI: アセットの絶対パスを取得
   getAssetAbsolutePath: (relativePath: string) => ipcRenderer.invoke('get-asset-absolute-path', relativePath),
 
+  // ランキング画像取得API
+  getImageDataUrl: (relativePath: string) => ipcRenderer.invoke('get-image-data-url', relativePath),
+
   // 終了確認関連API
   getComfyUIStatusForExit: () => ipcRenderer.invoke('get-comfyui-status-for-exit'),
   confirmExit: (confirmed: boolean) => ipcRenderer.invoke('confirm-exit', confirmed),

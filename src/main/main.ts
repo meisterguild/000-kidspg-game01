@@ -619,6 +619,24 @@ class ElectronApp {
       }
     });
 
+    // 画像のデータURLを取得する
+    ipcMain.handle('get-image-data-url', async (event, relativePath: string) => {
+      try {
+        const resultsDir = app.isPackaged
+          ? path.join(path.dirname(app.getPath('exe')), 'results')
+          : path.join(app.getAppPath(), 'results');
+        
+        const imagePath = path.join(resultsDir, relativePath);
+
+        const data = await fs.readFile(imagePath);
+        const base64 = Buffer.from(data).toString('base64');
+        return `data:image/png;base64,${base64}`;
+      } catch (error) {
+        console.error(`Failed to get image data url for ${relativePath}:`, error);
+        return null;
+      }
+    });
+
     // 終了確認関連のIPCハンドラー
     ipcMain.handle('get-comfyui-status-for-exit', async () => {
       if (this.comfyUIService) {
