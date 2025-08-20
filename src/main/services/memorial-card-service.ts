@@ -35,7 +35,96 @@ export class MemorialCardService {
   }
 
   /**
-   * ダミー画像用のメモリアルカード生成
+   * ダミー画像を使ったメモリアルカード事前生成
+   */
+  async generateDummyMemorialCard(datetime: string, resultDir: string, gameResult: GameResult): Promise<MemorialCardResult> {
+    const startTime = Date.now();
+    
+    if (!this.config.enabled) {
+      return {
+        success: false,
+        error: 'Memorial card generation is disabled',
+        duration: Date.now() - startTime
+      };
+    }
+
+    try {
+      // Step 1: ダミー画像パスを取得
+      const dummyPhotoPath = this.imageConfig.getDummyPhotoPath();
+      
+      // Step 2: ダミー画像の存在確認
+      try {
+        await fs.access(dummyPhotoPath);
+      } catch {
+        return {
+          success: false,
+          error: `Dummy photo not found: ${dummyPhotoPath}`,
+          duration: Date.now() - startTime
+        };
+      }
+
+      // Step 3: 合成設定生成（ダミー用ファイル名）
+      const compositionConfig = this.imageConfig.generateCompositionConfig(
+        gameResult,
+        datetime,
+        dummyPhotoPath
+      );
+      
+      // ダミー用ファイル名に変更
+      compositionConfig.outputFileName = this.imageConfig.getDummyOutputFileName(datetime);
+
+      // Step 4: 設定検証
+      const configValidation = this.imageConfig.validateConfig(compositionConfig);
+      if (!configValidation.valid) {
+        return {
+          success: false,
+          error: `Configuration validation failed: ${configValidation.errors.join(', ')}`,
+          duration: Date.now() - startTime
+        };
+      }
+
+      // Step 5: ImageMagickスクリプト生成
+      const scriptPath = await this.scriptGenerator.generateScript(
+        compositionConfig,
+        dummyPhotoPath,
+        resultDir
+      );
+
+      // Step 6: スクリプト検証
+      const scriptValidation = await this.scriptGenerator.validateScriptFile(scriptPath);
+      if (!scriptValidation.valid) {
+        return {
+          success: false,
+          error: `Script validation failed: ${scriptValidation.error}`,
+          duration: Date.now() - startTime
+        };
+      }
+
+      // Step 7: ImageMagickコマンド実行
+      const executionResult = await this.commandExecutor.executeMagickScript(scriptPath);
+
+      // Step 8: 実行結果の処理
+      const result = await this.processExecutionResult(
+        executionResult,
+        compositionConfig,
+        resultDir,
+        startTime
+      );
+
+      return result;
+
+    } catch (error) {
+      console.error('MemorialCardService - Dummy card generation error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        duration: Date.now() - startTime
+      };
+    }
+  }
+
+  /**
+   * ダミー画像用のメモリアルカード生成（既存メソッド - 後方互換性のため残存）
    */
   async generateFromDummyImage(datetime: string, resultDir: string): Promise<void> {
     

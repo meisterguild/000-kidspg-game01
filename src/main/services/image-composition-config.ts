@@ -31,15 +31,18 @@ export interface CompositionConfig {
 export class ImageCompositionConfig {
   private readonly cardBaseImagesDir: string;
   private readonly fontPath: string;
+  private readonly assetsDir: string;
 
   constructor(cardBaseImagesDir: string = 'card_base_images') {
     // 絶対パスに解決
     if (app.isPackaged) {
       // 本番環境: exeファイルと同じディレクトリ
       this.cardBaseImagesDir = path.join(path.dirname(app.getPath('exe')), cardBaseImagesDir);
+      this.assetsDir = path.join(path.dirname(app.getPath('exe')), 'assets');
     } else {
       // 開発環境: プロジェクトルート相対
       this.cardBaseImagesDir = path.resolve(cardBaseImagesDir);
+      this.assetsDir = path.resolve('assets');
     }
     this.fontPath = 'C:/Windows/Fonts/meiryo.ttc';
   }
@@ -130,6 +133,13 @@ export class ImageCompositionConfig {
    */
   getOutputFileName(datetime: string): string {
     return `memorial_card_${datetime}.png`;
+  }
+
+  /**
+   * ダミー用出力ファイル名を生成
+   */
+  getDummyOutputFileName(datetime: string): string {
+    return `memorial_card_${datetime}.dummy.png`;
   }
 
   /**
@@ -242,5 +252,12 @@ export class ImageCompositionConfig {
       valid: errors.length === 0,
       errors
     };
+  }
+
+  /**
+   * ダミー画像のパスを取得
+   */
+  getDummyPhotoPath(): string {
+    return path.join(this.assetsDir, 'dummy_photo.png');
   }
 }

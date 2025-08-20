@@ -46,7 +46,7 @@
     },
     "_comment_workflow_settings": "ワークフロー設定",
     "workflow": {
-      "templatePath": "assets/ComfyUI_KidsPG_02.json",
+      "templatePath": "assets/ComfyUI_KidsPG_03.json",
       "outputPrefix": "photo_anime"
     }
   },

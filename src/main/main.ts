@@ -239,24 +239,28 @@ class ElectronApp {
               const workflowTemplate = JSON.parse(templateContent);
 
               // 変数置換
-              // SaveImageノード(node 9)のfilename_prefixを更新（日時付き）
-              if (workflowTemplate['9'] && workflowTemplate['9'].inputs) {
-                const saveImageInputs = workflowTemplate['9'].inputs;
-                const outputPrefix = `${this.config.comfyui.workflow.outputPrefix}_${dateTime}`;
-                if (typeof saveImageInputs.filename_prefix === 'string' && saveImageInputs.filename_prefix.includes('${filename_prefix}')) {
-                  saveImageInputs.filename_prefix = saveImageInputs.filename_prefix.replace('${filename_prefix}', outputPrefix);
-                } else {
-                  saveImageInputs.filename_prefix = outputPrefix;
+              // SaveImageノードのfilename_prefixを動的に検索・更新
+              const outputPrefix = `${this.config.comfyui.workflow.outputPrefix}_${dateTime}`;
+              for (const nodeId in workflowTemplate) {
+                const node = workflowTemplate[nodeId];
+                if (node && node.class_type === 'SaveImage' && node.inputs) {
+                  const saveImageInputs = node.inputs;
+                  if (typeof saveImageInputs.filename_prefix === 'string' && saveImageInputs.filename_prefix.includes('${filename_prefix}')) {
+                    saveImageInputs.filename_prefix = saveImageInputs.filename_prefix.replace('${filename_prefix}', outputPrefix);
+                    console.log(`Updated SaveImage node ${nodeId}: ${outputPrefix}`);
+                  }
                 }
               }
               
-              // LoadImageノード(node 10)のimageファイル名を更新（日時付き）
-              if (workflowTemplate['10'] && workflowTemplate['10'].inputs) {
-                const loadImageInputs = workflowTemplate['10'].inputs;
-                if (typeof loadImageInputs.image === 'string' && loadImageInputs.image.includes('${photo_png}')) {
-                  loadImageInputs.image = loadImageInputs.image.replace('${photo_png}', photoFileName);
-                } else {
-                  loadImageInputs.image = photoFileName;
+              // LoadImageノードのimageファイル名を動的に検索・更新
+              for (const nodeId in workflowTemplate) {
+                const node = workflowTemplate[nodeId];
+                if (node && node.class_type === 'LoadImage' && node.inputs) {
+                  const loadImageInputs = node.inputs;
+                  if (typeof loadImageInputs.image === 'string' && loadImageInputs.image.includes('${photo_png}')) {
+                    loadImageInputs.image = loadImageInputs.image.replace('${photo_png}', photoFileName);
+                    console.log(`Updated LoadImage node ${nodeId}: ${photoFileName}`);
+                  }
                 }
               }
 
@@ -308,44 +312,40 @@ class ElectronApp {
         const filePath = path.join(dirPath, 'result.json');
         await fs.writeFile(filePath, JSON.stringify(jsonData, null, 2));
         
-        // result.json保存後、ダミー画像の場合はメモリアルカード生成を実行
+        // result.json保存後、常にダミーメモリアルカード生成を実行
         const dateTime = path.basename(dirPath);
-        const photoPath = path.join(dirPath, `photo_${dateTime}.png`);
-        const animePhotoPath = path.join(dirPath, `photo_anime_${dateTime}.png`);
         
-        // photo_anime_*.pngが存在し、ComfyUIによる生成でない場合（ダミー画像）
-        try {
-          const animeExists = await fs.access(animePhotoPath).then(() => true).catch(() => false);
-          if (animeExists && this.memorialCardService) {
-            // ファイルサイズでダミー画像かどうかを簡易判定
-            const photoStats = await fs.stat(photoPath);
-            const animeStats = await fs.stat(animePhotoPath);
-            
-            // 同じサイズならダミー画像からのコピー
-            if (photoStats.size === animeStats.size) {
-              // 重複防止チェック
-              if (this.memorialCardGenerationFlags.has(dateTime)) {
-                console.warn(`ElectronApp - Memorial card generation already in progress/completed for: ${dateTime}`);
-                return { success: true, filePath: filePath };
-              }
-              
-              this.memorialCardGenerationFlags.add(dateTime);
-              
-              setTimeout(async () => {
-                try {
-                  if (this.memorialCardService) {
-                    await this.memorialCardService.generateFromDummyImage(dateTime, dirPath);
-                  }
-                } catch (error) {
-                  console.error('ElectronApp - Memorial card generation error:', error);
-                  // エラー時はフラグを削除してリトライ可能にする
-                  this.memorialCardGenerationFlags.delete(dateTime);
-                }
-              }, 100);
-            }
+        if (this.memorialCardService) {
+          // 重複防止チェック
+          if (this.memorialCardGenerationFlags.has(dateTime)) {
+            console.warn(`ElectronApp - Memorial card generation already in progress/completed for: ${dateTime}`);
+            return { success: true, filePath: filePath };
           }
-        } catch (checkError) {
-          console.warn('ElectronApp - Error checking for dummy image memorial card generation:', checkError);
+          
+          this.memorialCardGenerationFlags.add(dateTime);
+          
+          // ダミーメモリアルカード生成を非同期実行
+          setTimeout(async () => {
+            try {
+              if (this.memorialCardService) {
+                const result = await this.memorialCardService.generateDummyMemorialCard(
+                  dateTime,
+                  dirPath,
+                  jsonData as GameResult
+                );
+                
+                if (result.success) {
+                  console.log(`ElectronApp - Dummy memorial card generated successfully: ${result.outputPath}`);
+                } else {
+                  console.error(`ElectronApp - Dummy memorial card generation failed: ${result.error}`);
+                }
+              }
+            } catch (error) {
+              console.error('ElectronApp - Dummy memorial card generation error:', error);
+              // エラー時はフラグを削除してリトライ可能にする
+              this.memorialCardGenerationFlags.delete(dateTime);
+            }
+          }, 100);
         }
         
         // Update results.json
@@ -648,6 +648,16 @@ class ElectronApp {
     try {
       this.memorialCardGenerationFlags.add(dateTime);
       await this.memorialCardService.generateFromAIImage(jobId, resultDir);
+      
+      // AI画像でのメモリアルカード生成完了後、results.jsonのパスを更新
+      if (this.resultsManager) {
+        try {
+          await this.resultsManager.updateMemorialCardPath(resultDir);
+          console.log(`ElectronApp - Memorial card path updated for AI image completion: ${dateTime}`);
+        } catch (pathUpdateError) {
+          console.error('ElectronApp - Failed to update memorial card path:', pathUpdateError);
+        }
+      }
     } catch (error) {
       console.error('ElectronApp - Memorial card generation failed after ComfyUI completion:', error);
     }

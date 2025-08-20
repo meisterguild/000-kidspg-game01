@@ -39,7 +39,7 @@ export class ResultsManager {
     
     const dirName = path.basename(resultDir);
     const resultPath = `${dirName}/result.json`;
-    const memorialCardPath = `${dirName}/memorial_card_${dirName}.png`;
+    const memorialCardPath = `${dirName}/memorial_card_${dirName}.dummy.png`;
     
     // Format timestamp to yyyy-mm-dd hh:mm:ss
     const playedAt = this.formatTimestamp(gameResult.timestampJST);
@@ -102,5 +102,46 @@ export class ResultsManager {
   private formatTimestamp(timestampJST: string): string {
     // Convert from "2025-08-17 09:33:21" format to "2025-08-17 09:33:21" (already correct format)
     return timestampJST;
+  }
+
+  /**
+   * メモリアルカードのパスをダミーから正規のものに更新
+   */
+  async updateMemorialCardPath(resultDir: string): Promise<void> {
+    const resultsData = await this.loadResults();
+    const dirName = path.basename(resultDir);
+    
+    const dummyPath = `${dirName}/memorial_card_${dirName}.dummy.png`;
+    const regularPath = `${dirName}/memorial_card_${dirName}.png`;
+    
+    // Recent結果の更新
+    let updatedRecent = false;
+    for (const entry of resultsData.recent) {
+      if (entry.memorialCardPath === dummyPath) {
+        entry.memorialCardPath = regularPath;
+        updatedRecent = true;
+        console.log(`ResultsManager - Updated recent memorial card path: ${dummyPath} -> ${regularPath}`);
+        break;
+      }
+    }
+    
+    // Ranking結果の更新
+    let updatedRanking = false;
+    for (const entry of resultsData.ranking_top) {
+      if (entry.memorialCardPath === dummyPath) {
+        entry.memorialCardPath = regularPath;
+        updatedRanking = true;
+        console.log(`ResultsManager - Updated ranking memorial card path: ${dummyPath} -> ${regularPath}`);
+        break;
+      }
+    }
+    
+    // 変更があった場合のみ保存
+    if (updatedRecent || updatedRanking) {
+      await this.saveResults(resultsData);
+      console.log(`ResultsManager - Memorial card path update completed for: ${dirName}`);
+    } else {
+      console.warn(`ResultsManager - No memorial card path found to update for: ${dirName}`);
+    }
   }
 }
