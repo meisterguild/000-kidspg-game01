@@ -29,7 +29,13 @@ export class RankingService {
       const content = await fsPromises.readFile(filePath, 'utf-8');
       return JSON.parse(content) as T;
     } catch (error) {
-      if ((error as any).code === 'ENOENT') {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        typeof (error as { code: unknown }).code === 'string' &&
+        (error as { code: string }).code === 'ENOENT'
+      ) {
         console.warn(`File not found: ${filePath}. Returning empty data.`);
         return null; // Or return an empty object/array based on T
       }
