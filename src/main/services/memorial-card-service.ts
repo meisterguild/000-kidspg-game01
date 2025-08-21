@@ -133,7 +133,7 @@ export class MemorialCardService {
     }
 
     try {
-      const result = await this.generateMemorialCard(resultDir);
+      const result = await this.generateMemorialCard(resultDir, true); // ダミーフラグを追加
       
       if (result.success) {
         this.sendToRenderer('memorial-card-generated', {
@@ -143,7 +143,7 @@ export class MemorialCardService {
           duration: result.duration
         });
       } else {
-        console.error(`MemorialCardService - Memorial card generation failed: ${result.error}`);
+        console.error(`MemorialCardService - Dummy memorial card generation failed: ${result.error}`);
         this.sendToRenderer('memorial-card-error', {
           success: false,
           datetime,
@@ -173,7 +173,7 @@ export class MemorialCardService {
     
 
     try {
-      const result = await this.generateMemorialCard(resultDir);
+      const result = await this.generateMemorialCard(resultDir, false); // AI用（非ダミー）
       
       if (result.success) {
         this.sendToRenderer('memorial-card-generated', {
@@ -213,7 +213,7 @@ export class MemorialCardService {
   /**
    * 記念カード生成のメイン処理
    */
-  async generateMemorialCard(resultDir: string): Promise<MemorialCardResult> {
+  async generateMemorialCard(resultDir: string, isDummy: boolean = false): Promise<MemorialCardResult> {
     const startTime = Date.now();
     
     try {
@@ -239,11 +239,9 @@ export class MemorialCardService {
       
       // Step 2: 合成設定生成
       const datetime = path.basename(resultDir);
-      const compositionConfig = this.imageConfig.generateCompositionConfig(
-        gameResult,
-        datetime,
-        animePhotoPath
-      );
+      const compositionConfig = isDummy 
+        ? this.imageConfig.generateDummyCompositionConfig(gameResult, datetime, animePhotoPath)
+        : this.imageConfig.generateCompositionConfig(gameResult, datetime, animePhotoPath);
 
       // Step 3: 設定検証
       const configValidation = this.imageConfig.validateConfig(compositionConfig);

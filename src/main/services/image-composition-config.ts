@@ -201,6 +201,27 @@ export class ImageCompositionConfig {
   }
 
   /**
+   * ダミー用合成設定生成
+   */
+  generateDummyCompositionConfig(
+    gameResult: GameResult, 
+    datetime: string, 
+    _foregroundImagePath: string
+  ): CompositionConfig {
+    const backgroundImagePath = this.getBackgroundImagePath(gameResult.rank);
+    const foregroundPosition = this.getForegroundPosition();
+    const textElements = this.getTextElements(gameResult);
+    const outputFileName = this.getDummyOutputFileName(datetime);
+
+    return {
+      backgroundImagePath,
+      foregroundPosition,
+      textElements,
+      outputFileName
+    };
+  }
+
+  /**
    * photo_anime.pngファイルを検索して取得
    */
   findAnimePhotoPath(resultDir: string): string | null {

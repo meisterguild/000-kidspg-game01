@@ -62,7 +62,7 @@
   "_comment_results_settings": "プレイ結果履歴設定",
   "results": {
     "_comment_max_recent": "最近のプレイ結果最大保存数",
-    "maxRecent": 10,
+    "maxRecent": 30,
     "_comment_max_ranking": "ランキング最大保存数",
     "maxRanking": 10
   },
