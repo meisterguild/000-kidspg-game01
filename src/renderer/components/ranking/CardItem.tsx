@@ -47,32 +47,46 @@ const CardItem: React.FC<CardItemProps> = ({ entry, config }) => {
       }
     };
 
-    // 初回ロード時は両パネルを初期化
-    setPanelA({ url: null, loading: true });
-    setPanelB({ url: null, loading: true });
-    setInitialLoading(true);
-    
-    // 並列ロード実行
-    Promise.all([
-      loadImageToPanel('A'),
-      loadImageToPanel('B')
-    ]).then(() => {
-      // 両パネル準備完了後、初期Loading状態を解除
-      setInitialLoading(false);
-    }).catch((error) => {
-      console.error('Failed to load images:', error);
-      setInitialLoading(false);
-    });
+    // データ更新時のダブルバッファリング処理
+    const handleDataUpdate = async () => {
+      setInitialLoading(true);
+      
+      // 非アクティブパネルに新しい画像をロード
+      const nextPanel = activePanel === 'A' ? 'B' : 'A';
+      
+      try {
+        await loadImageToPanel(nextPanel);
+        // ロード完了後にパネル切り替え（チラつき防止）
+        setActivePanel(nextPanel);
+        setInitialLoading(false);
+      } catch (error) {
+        console.error('Failed to update image:', error);
+        setInitialLoading(false);
+      }
+    };
+
+    // 初回ロード時
+    if (panelA.url === null && panelB.url === null) {
+      // 初回は並列ロードで高速化
+      setPanelA({ url: null, loading: true });
+      setPanelB({ url: null, loading: true });
+      setInitialLoading(true);
+      
+      Promise.all([
+        loadImageToPanel('A'),
+        loadImageToPanel('B')
+      ]).then(() => {
+        setInitialLoading(false);
+      }).catch((error) => {
+        console.error('Failed to load initial images:', error);
+        setInitialLoading(false);
+      });
+    } else {
+      // データ更新時はダブルバッファリング
+      handleDataUpdate();
+    }
   }, [entry.memorialCardPath]);
 
-  // パネル切り替えロジック（将来的に外部トリガーで制御可能）
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActivePanel(prev => prev === 'A' ? 'B' : 'A');
-    }, 20000); // 20秒ごとに切り替え（テスト用）
-
-    return () => clearInterval(interval);
-  }, []);
 
   const isRankingEntry = (entry as RankingTopEntry).rank !== undefined;
 
