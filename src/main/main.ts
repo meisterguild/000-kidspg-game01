@@ -194,7 +194,6 @@ class ElectronApp {
         // ファイルが存在しない場合はプレースホルダーを表示
         this.rankingWindow?.loadURL('data:text/html,<h1>ランキング準備中...</h1>');
       });
-      this.rankingWindow.webContents.openDevTools();
     }
 
     this.rankingWindow.on('closed', () => {

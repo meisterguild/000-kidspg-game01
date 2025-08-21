@@ -7,30 +7,72 @@ interface CardItemProps {
   config: AppConfig['ranking'] | undefined;
 }
 
+interface ImagePanel {
+  url: string | null;
+  loading: boolean;
+}
+
 const CardItem: React.FC<CardItemProps> = ({ entry, config }) => {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [panelA, setPanelA] = useState<ImagePanel>({ url: null, loading: true });
+  const [panelB, setPanelB] = useState<ImagePanel>({ url: null, loading: true });
+  const [activePanel, setActivePanel] = useState<'A' | 'B'>('A');
+
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
-    const loadImage = async () => {
+    const loadImageToPanel = async (panelType: 'A' | 'B'): Promise<void> => {
       if (entry.memorialCardPath) {
         try {
-          setLoading(true);
           const url = await window.electronAPI.getImageDataUrl(entry.memorialCardPath);
-          setImageUrl(url);
+          
+          if (panelType === 'A') {
+            setPanelA({ url, loading: false });
+          } else {
+            setPanelB({ url, loading: false });
+          }
         } catch (error) {
           console.error('Failed to load image:', error);
-          setImageUrl(null);
-        } finally {
-          setLoading(false);
+          if (panelType === 'A') {
+            setPanelA({ url: null, loading: false });
+          } else {
+            setPanelB({ url: null, loading: false });
+          }
         }
       } else {
-        setLoading(false);
+        if (panelType === 'A') {
+          setPanelA({ url: null, loading: false });
+        } else {
+          setPanelB({ url: null, loading: false });
+        }
       }
     };
 
-    loadImage();
+    // 初回ロード時は両パネルを初期化
+    setPanelA({ url: null, loading: true });
+    setPanelB({ url: null, loading: true });
+    setInitialLoading(true);
+    
+    // 並列ロード実行
+    Promise.all([
+      loadImageToPanel('A'),
+      loadImageToPanel('B')
+    ]).then(() => {
+      // 両パネル準備完了後、初期Loading状態を解除
+      setInitialLoading(false);
+    }).catch((error) => {
+      console.error('Failed to load images:', error);
+      setInitialLoading(false);
+    });
   }, [entry.memorialCardPath]);
+
+  // パネル切り替えロジック（将来的に外部トリガーで制御可能）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActivePanel(prev => prev === 'A' ? 'B' : 'A');
+    }, 20000); // 20秒ごとに切り替え（テスト用）
+
+    return () => clearInterval(interval);
+  }, []);
 
   const isRankingEntry = (entry as RankingTopEntry).rank !== undefined;
 
@@ -61,13 +103,26 @@ const CardItem: React.FC<CardItemProps> = ({ entry, config }) => {
       {isRankingEntry && <p className={rankStyle}>{(entry as RankingTopEntry).rank}位</p>}
       
       <div className="w-full h-4/5 bg-gray-600/50 rounded-md flex items-center justify-center text-xs mt-2">
-        {loading ? (
-          <p>Loading Image...</p>
-        ) : imageUrl ? (
-          <img src={imageUrl} alt={`Memorial Card for score ${entry.score}`} className="max-w-full max-h-full object-contain" />
-        ) : (
-          <p>Image Not Available</p>
-        )}
+        {(() => {
+          // 初期ロード中は共通のLoading表示
+          if (initialLoading) {
+            return <p>Loading Image...</p>;
+          }
+          
+          const currentPanel = activePanel === 'A' ? panelA : panelB;
+          
+          if (currentPanel.url) {
+            return (
+              <img 
+                src={currentPanel.url} 
+                alt={`Memorial Card for score ${entry.score}`} 
+                className="max-w-full max-h-full object-contain" 
+              />
+            );
+          } else {
+            return <p>Image Not Available</p>;
+          }
+        })()}
       </div>
     </div>
   );

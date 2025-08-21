@@ -9,22 +9,11 @@ interface RecentListProps {
 }
 
 const RecentList: React.FC<RecentListProps> = ({ entries, config }) => {
-  // データが少ない場合でもシームレスなループを実現するために動的に複製
+  // 3セット複製でオーバーラップ描画を実現
   const createLoopedEntries = (originalEntries: RecentEntry[]) => {
     if (originalEntries.length === 0) return [];
-    
-    const minDisplayCount = 10; // 最低でもこの数になるように複製
-    if (originalEntries.length >= minDisplayCount) {
-      return [...originalEntries, ...originalEntries]; // データが十分多い場合は2倍でOK
-    }
-
-    const repeatedEntries: RecentEntry[] = [];
-    while (repeatedEntries.length < minDisplayCount) {
-      repeatedEntries.push(...originalEntries);
-    }
-    // さらにもう1セット追加して、ループのつなぎ目を確実になくす
-    repeatedEntries.push(...originalEntries);
-    return repeatedEntries;
+    // 3セット複製: [A][B][A] - 1セット目終端前に2セット目開始
+    return [...originalEntries, ...originalEntries, ...originalEntries];
   };
 
   const loopedEntries = createLoopedEntries(entries);
@@ -32,7 +21,7 @@ const RecentList: React.FC<RecentListProps> = ({ entries, config }) => {
   return (
     <div className="w-full bg-gradient-to-br from-gray-900 to-black p-4 rounded-2xl border-2 border-cyan-400/30 shadow-lg shadow-cyan-400/10 overflow-hidden">
       {entries.length > 0 ? (
-        <div className="animate-scroll animate-scroll-delay space-x-4 p-2">
+        <div className="animate-scroll-recent space-x-4 p-2">
           {loopedEntries.map((entry, index) => (
             <CardItem key={index} entry={entry} config={config} />
           ))}

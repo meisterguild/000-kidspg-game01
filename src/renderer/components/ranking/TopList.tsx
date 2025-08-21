@@ -9,22 +9,11 @@ interface TopListProps {
 }
 
 const TopList: React.FC<TopListProps> = ({ entries, config }) => {
-  // データが少ない場合でもシームレスなループを実現するために動的に複製
+  // 3セット複製でオーバーラップ描画を実現
   const createLoopedEntries = (originalEntries: RankingTopEntry[]) => {
     if (originalEntries.length === 0) return [];
-    
-    const minDisplayCount = 10; // 最低でもこの数になるように複製
-    if (originalEntries.length >= minDisplayCount) {
-      return [...originalEntries, ...originalEntries]; // データが十分多い場合は2倍でOK
-    }
-
-    const repeatedEntries: RankingTopEntry[] = [];
-    while (repeatedEntries.length < minDisplayCount) {
-      repeatedEntries.push(...originalEntries);
-    }
-    // さらにもう1セット追加して、ループのつなぎ目を確実になくす
-    repeatedEntries.push(...originalEntries);
-    return repeatedEntries;
+    // 3セット複製: [A][B][A] - 1セット目終端前に2セット目開始
+    return [...originalEntries, ...originalEntries, ...originalEntries];
   };
 
   const loopedEntries = createLoopedEntries(entries);

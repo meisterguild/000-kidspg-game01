@@ -13,10 +13,10 @@ const TitleImageCarousel: React.FC = () => {
     const loadImages = async () => {
       const imageAssets = await getImageAssets();
       setImages([
+        imageAssets.titleImage04, //主人公がいてるので、この画像を先頭に
         imageAssets.titleImage01,
         imageAssets.titleImage02,
-        imageAssets.titleImage03,
-        imageAssets.titleImage04
+        imageAssets.titleImage03
       ]);
     };
     loadImages();
@@ -43,7 +43,7 @@ const TitleImageCarousel: React.FC = () => {
         setActiveImageSlot(activeImageSlot === 'A' ? 'B' : 'A');
         setIsTransitioning(false);
       }, 2000); // アニメーション時間と合わせる
-    }, 10000); // 10秒間隔
+    }, 8000); // 8秒間隔
 
     return () => clearInterval(interval);
   }, [currentIndex, activeImageSlot, images.length]);
