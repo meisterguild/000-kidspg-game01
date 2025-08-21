@@ -59,6 +59,16 @@ export interface AppConfig {
     maxRecent: number;
     maxRanking: number;
   };
+  ranking?: {
+    pagination: {
+      cardsPerPage: number;
+      intervalSeconds: number;
+      transitionDurationMs: number;
+    };
+    card: {
+      tileSize: number;
+    };
+  };
 }
 
 // カメラ撮影用の型定義

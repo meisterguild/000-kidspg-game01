@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRanking } from '../contexts/RankingContext';
-import TopList from '../components/ranking/TopList'; // ADDED
-import RecentList from '../components/ranking/RecentList'; // ADDED
+import TopList from '../components/ranking/TopList';
+import RecentList from '../components/ranking/RecentList';
 
 const RankingPage: React.FC = () => {
   const { rankingData, rankingConfig, loading, error } = useRanking();
@@ -31,21 +31,30 @@ const RankingPage: React.FC = () => {
   }
 
   return (
-    <div className="screen-container p-4 flex flex-col h-screen bg-gray-900 text-white">
-
+    <div className="h-screen bg-gray-900 text-white overflow-hidden flex flex-col">
       {/* Top Ranking Section */}
-      <div className="flex-1 flex flex-col items-center">
-        <h2 className="text-2xl font-bold">ランキング</h2>
-        <div className="flex-1 w-full flex items-center">
-          <TopList entries={rankingData.ranking_top} config={rankingConfig} />
+      <div className="flex-1 flex flex-col overflow-hidden p-2">
+        <h2 className="text-sm font-bold text-cyan-400 text-center flex-shrink-0 py-1">
+          ランキング
+        </h2>
+        <div className="flex-1 relative min-h-0">
+          <TopList 
+            entries={rankingData.ranking_top} 
+            config={rankingConfig} 
+          />
         </div>
       </div>
 
       {/* Recent Plays Section */}
-      <div className="flex-1 flex flex-col items-center">
-        <h2 className="text-2xl font-bold">みんなの きろく</h2>
-        <div className="flex-1 w-full flex items-center">
-          <RecentList entries={rankingData.recent} config={rankingConfig} />
+      <div className="flex-1 flex flex-col overflow-hidden p-2 pt-4">
+        <h2 className="text-sm font-bold text-cyan-400 text-center flex-shrink-0 py-1">
+          みんなの きろく
+        </h2>
+        <div className="flex-1 relative min-h-0">
+          <RecentList 
+            entries={rankingData.recent} 
+            config={rankingConfig} 
+          />
         </div>
       </div>
     </div>

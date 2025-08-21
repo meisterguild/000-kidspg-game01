@@ -627,11 +627,20 @@ class ElectronApp {
         
         const imagePath = path.join(resultsDir, relativePath);
 
+        // ファイル存在確認を事前に実行
+        try {
+          await fs.access(imagePath);
+        } catch {
+          // ファイルが存在しない場合は静かにnullを返す
+          return null;
+        }
+
         const data = await fs.readFile(imagePath);
         const base64 = Buffer.from(data).toString('base64');
         return `data:image/png;base64,${base64}`;
       } catch (error) {
-        console.error(`Failed to get image data url for ${relativePath}:`, error);
+        // 予期しないエラーのみログ出力
+        console.error(`Unexpected error getting image data url for ${relativePath}:`, error);
         return null;
       }
     });

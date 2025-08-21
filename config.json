@@ -65,5 +65,22 @@
     "maxRecent": 10,
     "_comment_max_ranking": "ランキング最大保存数",
     "maxRanking": 10
+  },
+  "_comment_ranking_display_settings": "ランキング表示画面設定",
+  "ranking": {
+    "_comment_pagination": "ページネーション設定",
+    "pagination": {
+      "_comment_cards_per_page": "1ページあたりのカード表示数",
+      "cardsPerPage": 5,
+      "_comment_interval_seconds": "ページ切り替え間隔（秒）",
+      "intervalSeconds": 8,
+      "_comment_transition_duration_ms": "ページ切り替えアニメーション時間（ミリ秒）",
+      "transitionDurationMs": 1000
+    },
+    "_comment_card_settings": "カード表示設定",
+    "card": {
+      "_comment_tile_size": "カードの基本サイズ（ピクセル）",
+      "tileSize": 300
+    }
   }
 }

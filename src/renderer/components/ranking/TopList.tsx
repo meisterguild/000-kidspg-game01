@@ -1,7 +1,7 @@
 import React from 'react';
 import { RankingTopEntry } from '@shared/types/ranking';
-import CardItem from './CardItem';
 import { AppConfig } from '@shared/types';
+import ScrollableCardList from './ScrollableCardList';
 
 interface TopListProps {
   entries: RankingTopEntry[];
@@ -9,28 +9,11 @@ interface TopListProps {
 }
 
 const TopList: React.FC<TopListProps> = ({ entries, config }) => {
-  // 3セット複製でオーバーラップ描画を実現
-  const createLoopedEntries = (originalEntries: RankingTopEntry[]) => {
-    if (originalEntries.length === 0) return [];
-    // 3セット複製: [A][B][A] - 1セット目終端前に2セット目開始
-    return [...originalEntries, ...originalEntries, ...originalEntries];
-  };
-
-  const loopedEntries = createLoopedEntries(entries);
-
   return (
-    <div className="w-full h-full overflow-hidden">
-      {entries.length > 0 ? (
-        <div className="flex space-x-2 animate-scroll h-full items-center">
-          {loopedEntries.map((entry, index) => (
-            <CardItem key={index} entry={entry} config={config} />
-          ))}
-          <div className="flex-shrink-0 w-48"></div>
-        </div>
-      ) : (
-        <p className="text-gray-500">No top ranking data.</p>
-      )}
-    </div>
+    <ScrollableCardList 
+      entries={entries}
+      config={config}
+    />
   );
 };
 
