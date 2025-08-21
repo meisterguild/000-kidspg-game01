@@ -2,7 +2,6 @@ import React from 'react';
 import { useRanking } from '../contexts/RankingContext';
 import TopList from '../components/ranking/TopList'; // ADDED
 import RecentList from '../components/ranking/RecentList'; // ADDED
-import StatusBar from '../components/ranking/StatusBar'; // ADDED
 
 const RankingPage: React.FC = () => {
   const { rankingData, rankingConfig, loading, error } = useRanking();
@@ -33,8 +32,6 @@ const RankingPage: React.FC = () => {
 
   return (
     <div className="screen-container p-4 flex flex-col h-screen bg-gray-900 text-white">
-      {/* Status Bar */}
-      <StatusBar lastUpdated={new Date()} /> {/* Use StatusBar component */}
 
       {/* Top Ranking Section */}
       <div className="flex-1 flex flex-col justify-center items-center mb-4">
