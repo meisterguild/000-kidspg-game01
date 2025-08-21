@@ -19,12 +19,13 @@ const TopList: React.FC<TopListProps> = ({ entries, config }) => {
   const loopedEntries = createLoopedEntries(entries);
 
   return (
-    <div className="w-full bg-gradient-to-br from-gray-900 to-black p-4 rounded-2xl border-2 border-cyan-400/30 shadow-lg shadow-cyan-400/10 overflow-hidden">
+    <div className="w-full h-full overflow-hidden">
       {entries.length > 0 ? (
-        <div className="flex space-x-4 p-2 animate-scroll">
+        <div className="flex space-x-2 animate-scroll h-full items-center">
           {loopedEntries.map((entry, index) => (
             <CardItem key={index} entry={entry} config={config} />
           ))}
+          <div className="flex-shrink-0 w-48"></div>
         </div>
       ) : (
         <p className="text-gray-500">No top ranking data.</p>

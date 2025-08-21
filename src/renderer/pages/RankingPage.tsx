@@ -34,15 +34,19 @@ const RankingPage: React.FC = () => {
     <div className="screen-container p-4 flex flex-col h-screen bg-gray-900 text-white">
 
       {/* Top Ranking Section */}
-      <div className="flex-1 flex flex-col justify-center items-center mb-4">
-        <h2 className="text-4xl font-bold mb-4">ランキング</h2>
-        <TopList entries={rankingData.ranking_top} config={rankingConfig} /> {/* Use TopList component */}
+      <div className="flex-1 flex flex-col items-center">
+        <h2 className="text-2xl font-bold">ランキング</h2>
+        <div className="flex-1 w-full flex items-center">
+          <TopList entries={rankingData.ranking_top} config={rankingConfig} />
+        </div>
       </div>
 
       {/* Recent Plays Section */}
-      <div className="flex-1 flex flex-col justify-center items-center">
-        <h2 className="text-4xl font-bold mb-4">みんなの きろく</h2>
-        <RecentList entries={rankingData.recent} config={rankingConfig} /> {/* Use RecentList component */}
+      <div className="flex-1 flex flex-col items-center">
+        <h2 className="text-2xl font-bold">みんなの きろく</h2>
+        <div className="flex-1 w-full flex items-center">
+          <RecentList entries={rankingData.recent} config={rankingConfig} />
+        </div>
       </div>
     </div>
   );

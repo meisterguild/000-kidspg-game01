@@ -12,7 +12,7 @@ interface ImagePanel {
   loading: boolean;
 }
 
-const CardItem: React.FC<CardItemProps> = ({ entry, config }) => {
+const CardItem: React.FC<CardItemProps> = ({ entry, config: _config }) => {
   const [panelA, setPanelA] = useState<ImagePanel>({ url: null, loading: true });
   const [panelB, setPanelB] = useState<ImagePanel>({ url: null, loading: true });
   const [activePanel, setActivePanel] = useState<'A' | 'B'>('A');
@@ -85,7 +85,7 @@ const CardItem: React.FC<CardItemProps> = ({ entry, config }) => {
       // データ更新時はダブルバッファリング
       handleDataUpdate();
     }
-  }, [entry.memorialCardPath]);
+  }, [entry.memorialCardPath]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const isRankingEntry = (entry as RankingTopEntry).rank !== undefined;
@@ -111,12 +111,16 @@ const CardItem: React.FC<CardItemProps> = ({ entry, config }) => {
 
   return (
     <div
-      className="flex-shrink-0 bg-gradient-to-b from-slate-700 to-slate-800 border border-cyan-400/20 rounded-lg p-3 shadow-lg flex flex-col items-center justify-center"
-      style={{ width: config?.tileSize || 376, height: config?.tileSize || 376 }}
+      className="flex-shrink-0 bg-gradient-to-b from-slate-700 to-slate-800 border border-cyan-400/20 rounded-lg p-1 shadow-lg flex aspect-square"
+      style={{ height: 'min(400px, 80vh)' }}
     >
-      {isRankingEntry && <p className={rankStyle}>{(entry as RankingTopEntry).rank}位</p>}
+      {isRankingEntry && (
+        <div className="flex-shrink-0 flex items-center justify-center" style={{ width: '60px' }}>
+          <p className={rankStyle}>{(entry as RankingTopEntry).rank}位</p>
+        </div>
+      )}
       
-      <div className="w-full h-4/5 bg-gray-600/50 rounded-md flex items-center justify-center text-xs mt-2">
+      <div className="flex-1 flex items-center justify-center text-xs overflow-hidden p-0">
         {(() => {
           // 初期ロード中は共通のLoading表示
           if (initialLoading) {
@@ -130,7 +134,7 @@ const CardItem: React.FC<CardItemProps> = ({ entry, config }) => {
               <img 
                 src={currentPanel.url} 
                 alt={`Memorial Card for score ${entry.score}`} 
-                className="max-w-full max-h-full object-contain" 
+                className="w-full h-full object-contain rounded-md" 
               />
             );
           } else {
