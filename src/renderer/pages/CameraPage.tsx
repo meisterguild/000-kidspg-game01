@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { NICKNAME_OPTIONS, CAMERA_CONFIG, TIMING_CONFIG } from '@shared/utils/constants';
+import { NICKNAME_OPTIONS, TIMING_CONFIG } from '@shared/utils/constants';
+import { useConfig } from '../contexts/ConfigContext';
 import { useImageResize } from '../hooks/useImageResize';
 import { playSound } from '../utils/assets';
 import { useScreen } from '../contexts/ScreenContext';
@@ -9,6 +10,7 @@ import { cameraService } from '../services/camera-service';
 import { useSavePhoto } from '../hooks/useSavePhoto';
 
 const CameraPage: React.FC = () => {
+  const { config } = useConfig();
   const { setCurrentScreen } = useScreen();
   const {
     capturedImage,
@@ -25,6 +27,13 @@ const CameraPage: React.FC = () => {
   const { savePhoto, isSaving: isSavingHook, error: saveError } = useSavePhoto();
   const { resizeToSquare } = useImageResize();
   const [dummyPhotoPath, setDummyPhotoPath] = useState('');
+
+  // configが更新されたらcameraServiceに設定
+  useEffect(() => {
+    if (config) {
+      cameraService.setConfig(config);
+    }
+  }, [config]);
 
   // ダミーモード時にアセットの絶対パスを取得
   useEffect(() => {
@@ -119,7 +128,7 @@ const CameraPage: React.FC = () => {
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
 
-        const imageData = resizeToSquare(canvas, CAMERA_CONFIG.width);
+        const imageData = resizeToSquare(canvas); // デフォルトサイズを使用
         setCapturedImage(imageData);
         setIsPhotoTaken(true);
       }

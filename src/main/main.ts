@@ -721,10 +721,10 @@ class ElectronApp {
         return;
       }
 
-      // ComfyUIServiceは画像変換のみを担当（記念カード機能を除去）
+      // ComfyUIServiceは画像変換のみを担当
       this.comfyUIService = new ComfyUIService(
         this.config.comfyui,
-        undefined, // memorialCardConfigを除去
+        this.config.memorialCard, // メモリアルカード設定を渡す
         this.mainWindow || undefined
       );
       await this.comfyUIService.initialize();

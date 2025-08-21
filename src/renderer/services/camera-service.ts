@@ -1,10 +1,22 @@
-import { CAMERA_CONFIG, WINDOW_CONFIG } from '@shared/utils/constants';
+import { WINDOW_CONFIG } from '@shared/utils/constants';
+import type { AppConfig } from '@shared/types';
 
 export class CameraService {
   private stream: MediaStream | null = null;
   private isDummyMode: boolean = false;
   private dummyImageData: string | null = null;
   private isInitialized: boolean = false;
+  private config: AppConfig | null = null;
+
+  setConfig(config: AppConfig | null): void {
+    this.config = config;
+  }
+
+  private getCameraConfig() {
+    // デフォルト値を設定
+    const defaultConfig = { width: 380, height: 380, format: 'image/png' };
+    return this.config?.camera || defaultConfig;
+  }
 
   async initialize(): Promise<void> {
     if (this.isInitialized) {
@@ -64,7 +76,8 @@ export class CameraService {
       }
 
       // 正方形にリサイズ
-      const size = CAMERA_CONFIG.width;
+      const cameraConfig = this.getCameraConfig();
+      const size = cameraConfig.width;
       canvas.width = size;
       canvas.height = size;
 
@@ -100,7 +113,8 @@ export class CameraService {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const size = CAMERA_CONFIG.width;
+    const cameraConfig = this.getCameraConfig();
+    const size = cameraConfig.width;
     canvas.width = size;
     canvas.height = size;
 

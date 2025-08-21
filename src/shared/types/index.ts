@@ -50,6 +50,11 @@ export interface AppConfig {
       outputPrefix: string;
     };
   };
+  camera?: {
+    width: number;
+    height: number;
+    format: string;
+  };
   memorialCard?: {
     enabled: boolean;
     magickTimeout: number;

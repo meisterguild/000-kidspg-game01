@@ -41,9 +41,11 @@ export class ComfyUIService {
   }>();
   private preUploadedImages = new Map<string, string>(); // datetime -> uploaded filename
   private memorialCardCallback: ((jobId: string, resultDir: string) => Promise<void>) | null = null;
-  constructor(config: ComfyUIConfig, memorialCardConfig?: undefined, mainWindow?: BrowserWindow) {
+  private memorialCardEnabled: boolean = true; // メモリアルカード機能の有効/無効状態
+  constructor(config: ComfyUIConfig, memorialCardConfig?: { enabled: boolean }, mainWindow?: BrowserWindow) {
     this.config = config;
     this.mainWindow = mainWindow || null;
+    this.memorialCardEnabled = memorialCardConfig?.enabled ?? true;
   }
 
   async initialize(): Promise<void> {
@@ -181,6 +183,24 @@ export class ComfyUIService {
     const job = this.activeJobs.get(jobId);
     if (job) {
       job.status = status;
+      
+      // 完了またはエラー時の削除処理
+      if (status === 'completed' || status === 'error') {
+        // メモリアルカード生成が無効、またはcallbackが設定されていない場合は即座に削除
+        if (!this.memorialCardEnabled || !this.memorialCardCallback) {
+          console.log(`ComfyUIService - Removing completed job immediately: ${jobId} (memorial card disabled or callback not set)`);
+          this.activeJobs.delete(jobId);
+        } else {
+          // メモリアルカード生成時間を考慮して遅延削除
+          console.log(`ComfyUIService - Scheduling delayed removal of completed job: ${jobId} (memorial card enabled)`);
+          setTimeout(() => {
+            if (this.activeJobs.has(jobId)) {
+              console.log(`ComfyUIService - Removing completed job after delay: ${jobId}`);
+              this.activeJobs.delete(jobId);
+            }
+          }, 5000); // 5秒後に削除
+        }
+      }
     }
   }
 

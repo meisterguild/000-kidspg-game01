@@ -7,7 +7,7 @@
       "speed": {
         "min": 2.0,
         "max": 50.0,
-        "incrementPerLevel": 1.0
+        "incrementPerLevel": 0.6
       },
       "_comment_spawn_distance_settings": "障害物間の距離設定 (ピクセル)",
       "spawnDistance": {
@@ -58,6 +58,14 @@
     "magickTimeout": 60000,
     "_comment_card_base_images_dir": "背景カード画像ディレクトリ",
     "cardBaseImagesDir": "card_base_images"
+  },
+  "_comment_camera_settings": "カメラ撮影設定",
+  "camera": {
+    "_comment_resolution": "撮影解像度設定（ピクセル）",
+    "width": 300,
+    "height": 300,
+    "_comment_format": "画像フォーマット",
+    "format": "image/png"
   },
   "_comment_results_settings": "プレイ結果履歴設定",
   "results": {

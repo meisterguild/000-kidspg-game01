@@ -12,12 +12,6 @@ export const GAME_CANVAS = {
   height: 600
 } as const;
 
-// カメラ撮影設定
-export const CAMERA_CONFIG = {
-  width: 380,
-  height: 380,
-  format: 'image/png' as const
-};
 
 // ニックネームオプション
 export const NICKNAME_OPTIONS: NicknameOption[] = [

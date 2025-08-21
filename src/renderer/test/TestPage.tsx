@@ -126,6 +126,22 @@ export const TestPage: React.FC = () => {
                 
                 <div className="space-y-4">
                   <div className="border border-red-600 rounded-lg p-4 bg-red-800">
+                    <h3 className="font-medium text-red-200 mb-3">カメラ設定</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-red-300">撮影解像度:</span>
+                        <span className="font-mono text-yellow-300">{config.camera?.width || 380} x {config.camera?.height || 380}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-red-300">画像フォーマット:</span>
+                        <span className="font-mono text-yellow-300">{config.camera?.format || 'image/png'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="border border-red-600 rounded-lg p-4 bg-red-800">
                     <h3 className="font-medium text-red-200 mb-3">障害物設定</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
