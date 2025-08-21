@@ -11,6 +11,7 @@ export class RankingService {
   private resultsPath: string;
   private configPath: string;
   private config: AppConfig | null = null;
+  private lastModified: number = 0;
 
   constructor() {
     // Determine results.json path based on environment
@@ -45,9 +46,18 @@ export class RankingService {
   }
 
   public async getRankingData(): Promise<RankingData | null> {
-    const data = await this.loadJsonFile<RankingData>(this.resultsPath);
-    // Ensure data has 'recent' and 'ranking_top' arrays, even if empty
-    return data || { recent: [], ranking_top: [] };
+    try {
+      // ファイルの最終更新時刻を確認
+      const stats = await fsPromises.stat(this.resultsPath);
+      this.lastModified = stats.mtime.getTime();
+      
+      const data = await this.loadJsonFile<RankingData>(this.resultsPath);
+      // Ensure data has 'recent' and 'ranking_top' arrays, even if empty
+      return data || { recent: [], ranking_top: [] };
+    } catch {
+      console.warn(`getRankingData: File not found or inaccessible: ${this.resultsPath}`);
+      return { recent: [], ranking_top: [] };
+    }
   }
 
   public async getRankingConfig(): Promise<AppConfig | null> {
@@ -58,21 +68,103 @@ export class RankingService {
   }
 
   public watchResults(callback: (data: RankingData) => void): () => void {
-    try {
-      const watcher = fs.watch(this.resultsPath, async (eventType) => {
-        if (eventType === 'change') {
-          console.log(`${this.resultsPath} has changed. Reloading ranking data.`);
-          const data = await this.getRankingData();
-          if (data) {
-            callback(data);
+    const resultsDir = path.dirname(this.resultsPath);
+    const resultsFileName = path.basename(this.resultsPath);
+    let watcher: fs.FSWatcher | null = null;
+    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+    let isWatcherActive = false;
+    
+    // ファイル監視を設定
+    const setupFileWatcher = () => {
+      try {
+        // ディレクトリレベルで監視して、ファイル作成も検知
+        watcher = fs.watch(resultsDir, async (eventType, filename) => {
+          // results.jsonファイルの変更または作成を監視
+          if (filename === resultsFileName && (eventType === 'change' || eventType === 'rename')) {
+            console.log(`RankingService: ${this.resultsPath} has ${eventType}d. Reloading ranking data.`);
+            
+            // ファイル存在確認後にデータ読み込み
+            try {
+              await fsPromises.access(this.resultsPath);
+              const data = await this.getRankingData();
+              if (data) {
+                callback(data);
+              }
+            } catch (accessError) {
+              console.warn(`RankingService: Results file not accessible: ${this.resultsPath}`, accessError);
+            }
           }
-        }
-      });
+        });
 
-      return () => watcher.close();
-    } catch (error) {
-      console.error(`Failed to watch ${this.resultsPath}:`, error);
-      return () => {};
+        isWatcherActive = true;
+        console.log(`RankingService: Started watching directory: ${resultsDir} for file: ${resultsFileName}`);
+      } catch (error) {
+        console.error(`RankingService: Failed to watch directory ${resultsDir}:`, error);
+        isWatcherActive = false;
+        
+        // ディレクトリが存在しない場合は作成を試行
+        try {
+          fs.mkdirSync(resultsDir, { recursive: true });
+          console.log(`RankingService: Created results directory: ${resultsDir}`);
+          
+          // 再帰的に再試行
+          setupFileWatcher();
+        } catch (mkdirError) {
+          console.error(`RankingService: Failed to create results directory: ${resultsDir}`, mkdirError);
+        }
+      }
+    };
+    
+    // ポーリングによる監視を設定（フォールバック）
+    const setupPolling = () => {
+      pollingInterval = setInterval(async () => {
+        try {
+          const stats = await fsPromises.stat(this.resultsPath);
+          const currentModified = stats.mtime.getTime();
+          
+          if (currentModified > this.lastModified) {
+            console.log('RankingService: File change detected via polling. Reloading ranking data.');
+            const data = await this.getRankingData();
+            if (data) {
+              callback(data);
+            }
+          }
+        } catch {
+          // ファイルが存在しない場合は静かに無視
+        }
+      }, 1000); // 1秒間隔でポーリング
+    };
+    
+    // ファイル監視を開始
+    setupFileWatcher();
+    
+    // ファイル監視が失敗した場合のフォールバックとしてポーリングを開始
+    if (!isWatcherActive) {
+      console.log('RankingService: File watcher failed, using polling as fallback');
+      setupPolling();
     }
+    
+    // 初回データ読み込み
+    setTimeout(async () => {
+      try {
+        const data = await this.getRankingData();
+        if (data) {
+          callback(data);
+        }
+      } catch (error) {
+        console.warn('RankingService: Initial data load failed:', error);
+      }
+    }, 100);
+
+    return () => {
+      if (watcher) {
+        watcher.close();
+        console.log('RankingService: Stopped file watcher');
+      }
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        console.log('RankingService: Stopped polling watcher');
+      }
+    };
   }
 }
