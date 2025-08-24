@@ -93,7 +93,7 @@ class ElectronApp {
       
       this.resultsManager = new ResultsManager(resultsDir, this.config);
 
-      this.createMainWindow();
+      await this.createMainWindow();
       this.setupIPC();
       await this.initializeServices();
     });
@@ -112,14 +112,14 @@ class ElectronApp {
       }
     });
 
-    app.on('activate', () => {
+    app.on('activate', async () => {
       if (BrowserWindow.getAllWindows().length === 0) {
-        this.createMainWindow();
+        await this.createMainWindow();
       }
     });
   }
 
-  private createMainWindow(): void {
+  private async createMainWindow(): Promise<void> {
     this.mainWindow = new BrowserWindow({
       width: 1200,
       height: WINDOW_CONFIG.main.height,
@@ -146,9 +146,31 @@ class ElectronApp {
       this.mainWindow.loadURL('http://localhost:3000');
       this.mainWindow.webContents.openDevTools();
     } else {
-      this.mainWindow.loadURL(
-        `file://${path.join(__dirname, "../../renderer/index.html")}`
-      );
+      // 複数のパスを試行してindex.htmlを見つける
+      const indexPaths = [
+        path.join(__dirname, '../../renderer/index.html'),  // dist/main/main -> dist/renderer/index.html
+        path.join(__dirname, '../renderer/index.html'),     // dist/main -> dist/renderer/index.html
+        path.join(__dirname, 'renderer/index.html'),        // 直接
+      ];
+      
+      let indexLoaded = false;
+      
+      for (const indexPath of indexPaths) {
+        try {
+          await fs.access(indexPath);
+          await this.mainWindow.loadFile(indexPath);
+          console.log(`Successfully loaded index.html from: ${indexPath}`);
+          indexLoaded = true;
+          break;
+        } catch {
+          console.log(`Failed to load from path: ${indexPath}`);
+        }
+      }
+      
+      if (!indexLoaded) {
+        console.error('Could not find index.html in any expected location');
+        this.mainWindow?.loadURL('data:text/html,<h1>アプリケーション読み込み中...</h1>');
+      }
     }
 
     // ウィンドウのXボタンクリック時に終了確認を表示
