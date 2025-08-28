@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KidsPGフェス 2025 メモリアルカードリスト</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #ffeedd;
+            font-family: 'Arial', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        /* ヘッダー部 */
+        .header {
+            background: linear-gradient(135deg, #d3593a, #e67055);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            height: 70px;
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            height: 100%;
+        }
+        
+        .header-icon {
+            height: 48px;
+            width: 48px;
+            object-fit: contain;
+            margin-right: 10px;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        /* ハンバーガーメニュー */
+        .hamburger {
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .hamburger span {
+            width: 100%;
+            height: 3px;
+            background: white;
+            margin: 3px 0;
+            transition: 0.3s;
+            transform-origin: left;
+        }
+        
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg);
+        }
+        
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg);
+        }
+        
+        /* サイドメニュー */
+        .side-menu {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 300px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+            transition: right 0.3s ease;
+            z-index: 200;
+            padding: 80px 20px 20px;
+        }
+        
+        .side-menu.active {
+            right: 0;
+        }
+        
+        .menu-item {
+            margin: 20px 0;
+        }
+        
+        .menu-button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background: #f5f5f5;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .menu-button.active {
+            background: #d3593a;
+            color: white;
+        }
+        
+        .menu-button:hover {
+            background: #e67055;
+            color: white;
+        }
+        
+        /* オーバーレイ */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 150;
+        }
+        
+        .overlay.active {
+            display: block;
+        }
+        
+        /* 絞り込み部 */
+        .filter-section {
+            padding: 10px 15px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: none;
+            position: sticky;
+            top: 70px;
+            z-index: 50;
+        }
+        
+        .filter-section.active {
+            display: block;
+        }
+        
+        .time-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        
+        .time-button {
+            padding: 8px 6px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .time-button.active {
+            background: #d3593a;
+            color: white;
+            border-color: #d3593a;
+        }
+        
+        .time-button:hover {
+            border-color: #d3593a;
+        }
+        
+        /* ギャラリー部 */
+        .gallery-section {
+            padding: 20px 10px;
+        }
+        
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        @media (min-width: 480px) {
+            .gallery-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }
+        }
+        
+        @media (min-width: 768px) {
+            .gallery-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+        }
+        
+        .card-item {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            cursor: pointer;
+            position: relative;
+            perspective: 1000px;
+            animation: float 2s ease-in-out infinite;
+            animation-play-state: paused;
+            transform: translateY(0) rotateX(0deg) rotateY(0deg);
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1), 
+                       box-shadow 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        
+        .card-item:hover {
+            animation-play-state: running;
+            transform: translateY(-10px) rotateX(2deg) rotateY(2deg);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        
+        .card-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        /* モーダル（ポケモンカード風3D演出） */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal.is-open {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .modal-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+        }
+        
+        .modal-close {
+            display: none;
+        }
+        
+        .stage {
+            perspective: 1000px;
+            perspective-origin: center center;
+        }
+        
+        .card {
+            position: relative;
+            width: 320px;
+            height: 448px;
+            max-width: calc(90vw);
+            max-height: calc(90vh - 20px);
+            transform-style: preserve-3d;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            background: center/contain no-repeat var(--img);
+            background-size: contain;
+        }
+        
+        /* スマホ対応のアスペクト比調整 */
+        @media (max-width: 480px) {
+            .card {
+                width: min(320px, 90vw);
+                height: min(448px, calc((90vw * 448) / 320));
+            }
+        }
+        
+        /* ホログラム走査線（削除） */
+        .edge-scan {
+            display: none;
+        }
+        
+        /* グロウエフェクト */
+        .glow {
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            right: -20px;
+            bottom: -20px;
+            background: radial-gradient(circle, 
+                rgba(211,89,58,0.3) 0%, 
+                rgba(255,255,255,0.1) 30%, 
+                transparent 70%);
+            filter: blur(14px);
+            opacity: 0;
+            pointer-events: none;
+            border-radius: 20px;
+        }
+        
+        .download-button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            background: #d3593a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            pointer-events: auto;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        
+        .download-button.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .download-button:hover {
+            background: #e67055;
+            transform: translateY(-2px);
+        }
+        
+        /* フッター部 */
+        .footer {
+            text-align: center;
+            padding: 30px 20px;
+            background: #333;
+            color: white;
+            margin-top: 40px;
+        }
+        
+        .footer a {
+            color: #d3593a;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        /* アニメーション */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* ロード中表示 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 18px;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #d3593a;
+            border-radius: 50%;
+            border-top: 3px solid transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* キラキラエフェクトを削除（枠だけのキラキラに変更） */
+        
+        /* 3D浮遊エフェクト - ホバー状態に相対的な微細変化 */
+        @keyframes float {
+            0%, 100% { 
+                transform: translateY(-10px) rotateX(2deg) rotateY(2deg);
+            }
+            25% { 
+                transform: translateY(-12px) rotateX(1deg) rotateY(3deg);
+            }
+            50% { 
+                transform: translateY(-8px) rotateX(3deg) rotateY(1deg);
+            }
+            75% { 
+                transform: translateY(-11px) rotateX(2deg) rotateY(2deg);
+            }
+        }
+        
+        /* カードに疑似要素でキラキラ効果を追加 */
+        
+        .card-item::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, 
+                transparent 30%, 
+                rgba(211, 89, 58, 0.3) 50%,
+                rgba(255, 255, 255, 0.4) 52%,
+                rgba(211, 89, 58, 0.3) 54%,
+                transparent 70%);
+            background-size: 50px 50px;
+            opacity: 0;
+            z-index: 1;
+            border-radius: 14px;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+        }
+        
+        .card-item:hover::before {
+            opacity: 1;
+            animation: borderShimmer 3s linear infinite;
+        }
+        
+        .card-item::after {
+            content: '';
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            right: 1px;
+            bottom: 1px;
+            background: white;
+            border-radius: 11px;
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        .card-item img {
+            position: relative;
+            z-index: 3;
+        }
+        
+        @keyframes borderShimmer {
+            0% { background-position: -100px -100px; }
+            100% { background-position: 100px 100px; }
+        }
+        
+        /* ダイナミックな3Dカードアニメーション */
+        .card.is-new {
+            animation: cardEntry3D 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        
+        .card.is-new .glow { animation: glowPulse 0.9s ease-out 0.2s forwards; }
+        
+        @keyframes cardEntry3D {
+            0% {
+                transform: scale(0.3) rotateY(-45deg) rotateX(25deg) rotateZ(-10deg) translateZ(-150px) translateY(40px) translateX(-30px);
+                opacity: 0;
+                filter: blur(6px);
+            }
+            20% {
+                transform: scale(0.7) rotateY(-25deg) rotateX(15deg) rotateZ(-5deg) translateZ(-80px) translateY(25px) translateX(-15px);
+                opacity: 0.3;
+                filter: blur(3px);
+            }
+            45% {
+                transform: scale(0.95) rotateY(15deg) rotateX(-8deg) rotateZ(3deg) translateZ(30px) translateY(-5px) translateX(10px);
+                opacity: 0.7;
+                filter: blur(1px);
+            }
+            70% {
+                transform: scale(1.08) rotateY(-5deg) rotateX(3deg) rotateZ(-1deg) translateZ(20px) translateY(2px) translateX(-3px);
+                opacity: 0.9;
+                filter: blur(0px);
+            }
+            85% {
+                transform: scale(1.02) rotateY(2deg) rotateX(-1deg) rotateZ(0deg) translateZ(5px) translateY(-1px) translateX(1px);
+                opacity: 0.98;
+            }
+            100% {
+                transform: scale(1) rotateY(0deg) rotateX(0deg) rotateZ(0deg) translateZ(0px) translateY(0px) translateX(0px);
+                opacity: 1;
+            }
+        }
+        
+        
+        @keyframes glowPulse {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.5);
+            }
+        }
+        
+        /* prefers-reduced-motion対応 */
+        @media (prefers-reduced-motion: reduce) {
+            .card.is-new {
+                animation: cardEntrySimple 0.5s ease-out forwards;
+            }
+            
+            
+            .card.is-new .glow {
+                animation: glowSimple 0.3s ease-out forwards;
+            }
+            
+            @keyframes cardEntrySimple {
+                0% {
+                    transform: scale(0.9);
+                    opacity: 0;
+                }
+                100% {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes glowSimple {
+                0% {
+                    opacity: 0;
+                }
+                50% {
+                    opacity: 0.3;
+                }
+                100% {
+                    opacity: 0;
+                }
+            }
+        }
+        
+        /* モーダル開閉時のbodyスクロール制御 */
+        body.modal-open {
+            overflow: hidden;
+        }
+    </style>
+    <meta property="og:title" content="KidsPGフェス 2025 メモリアルカードリスト">
+    <meta property="og:description" content="マイスターギルドがAIで作ったゲームに挑戦してくれた方のメモリアルカードをAI生成しました✨ミニゲームもあるよ🎵">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://poc.meisterguild.work/kidspg/2025-memorial-gallery.html">
+    <meta property="og:image" content="https://poc.meisterguild.work/kidspg/game_title_image.png">
+    <meta property="og:site_name" content="KidsPGフェス">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@kids_pg">
+    <meta name="twitter:creator" content="@kids_pg">
+    <meta name="twitter:title" content="KidsPGフェス 2025 メモリアルカードリスト">
+    <meta name="twitter:description" content="マイスターギルドがAIで作ったゲームに挑戦してくれた方のメモリアルカードをAI生成しました✨ミニゲームもあるよ🎵">
+    <meta name="twitter:image" content="https://poc.meisterguild.work/kidspg/game_title_image.png">
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-content">
+            <img src="neko.png" alt="アイコン" class="header-icon">
+            <h1>KidsPGフェス メモリアルカードリスト</h1>
+        </div>
+        <div class="hamburger" onclick="toggleMenu()">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </header>
+
+    <!-- オーバーレイ -->
+    <div class="overlay" onclick="toggleMenu()"></div>
+
+    <!-- サイドメニュー -->
+    <nav class="side-menu">
+        <div class="menu-item">
+            <button class="menu-button" onclick="setDisplayMode('time')">日時選択</button>
+        </div>
+        <div class="menu-item">
+            <button class="menu-button" onclick="setDisplayMode('all')">全表示</button>
+        </div>
+        <div class="menu-item">
+            <a href="https://poc.meisterguild.work/yokemakuri/" target="_blank"
+             class="menu-button" style="display: block; text-decoration: none; color: inherit; text-align: center; font-weight: bold;">ミニゲーム</a>
+        </div>
+    </nav>
+
+    <!-- 絞り込み部 -->
+    <section class="filter-section active">
+        <div class="time-buttons">
+            <button class="time-button active" onclick="filterByTime(10)">10時台</button>
+            <button class="time-button" onclick="filterByTime(11)">11時台</button>
+            <button class="time-button" onclick="filterByTime(12)">12時台</button>
+            <button class="time-button" onclick="filterByTime(13)">13時台</button>
+            <button class="time-button" onclick="filterByTime(14)">14時台</button>
+            <button class="time-button" onclick="filterByTime(15)">15時台</button>
+        </div>
+    </section>
+
+    <!-- ギャラリー部 -->
+    <section class="gallery-section">
+        <div class="loading">カードを読み込み中...</div>
+        <div class="gallery-grid" style="display: none;"></div>
+    </section>
+
+    <!-- モーダル（ポケモンカード風3D演出） -->
+    <div class="modal" id="cardModal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <button class="modal-close" aria-label="閉じる">×</button>
+            <div class="stage">
+                <div class="card" style="--img: url()">
+                    <i class="edge-scan"></i>
+                    <i class="glow"></i>
+                </div>
+            </div>
+            <button class="download-button" onclick="downloadImage()">ダウンロード</button>
+        </div>
+    </div>
+
+    <!-- フッター -->
+    <footer class="footer">
+        <p>powered by © <a href="https://www.m-gild.com/" target="_blank">MEISTER GUILD Inc.</a></p>
+    </footer>
+
+    <script>
+        // 画像データ（timestampJST付きオブジェクト配列）
+        const imageData = [
+            { file: "memorial_card_20250823_100342.png", timestampJST: "2025-08-23 10:05:31" },
+            { file: "memorial_card_20250823_100733.png", timestampJST: "2025-08-23 10:07:58" },
+            { file: "memorial_card_20250823_101249.png", timestampJST: "2025-08-23 10:14:33" },
+            { file: "memorial_card_20250823_101800.png", timestampJST: "2025-08-23 10:19:41" },
+            { file: "memorial_card_20250823_102135.png", timestampJST: "2025-08-23 10:22:15" },
+            { file: "memorial_card_20250823_102309.png", timestampJST: "2025-08-23 10:25:00" },
+            { file: "memorial_card_20250823_102542.png", timestampJST: "2025-08-23 10:27:24" },
+            { file: "memorial_card_20250823_102826.png", timestampJST: "2025-08-23 10:30:16" },
+            { file: "memorial_card_20250823_103110.png", timestampJST: "2025-08-23 10:32:57" },
+            { file: "memorial_card_20250823_103339.png", timestampJST: "2025-08-23 10:35:39" },
+            { file: "memorial_card_20250823_103607.png", timestampJST: "2025-08-23 10:38:04" },
+            { file: "memorial_card_20250823_104325.png", timestampJST: "2025-08-23 10:45:10" },
+            { file: "memorial_card_20250823_104541.png", timestampJST: "2025-08-23 10:47:38" },
+            { file: "memorial_card_20250823_104825.png", timestampJST: "2025-08-23 10:48:38" },
+            { file: "memorial_card_20250823_104922.png", timestampJST: "2025-08-23 10:51:11" },
+            { file: "memorial_card_20250823_105146.png", timestampJST: "2025-08-23 10:53:39" },
+            { file: "memorial_card_20250823_105408.png", timestampJST: "2025-08-23 10:55:58" },
+            { file: "memorial_card_20250823_105638.png", timestampJST: "2025-08-23 10:58:08" },
+            { file: "memorial_card_20250823_105859.png", timestampJST: "2025-08-23 11:00:57" },
+            { file: "memorial_card_20250823_110131.png", timestampJST: "2025-08-23 11:01:53" },
+            { file: "memorial_card_20250823_110240.png", timestampJST: "2025-08-23 11:03:53" },
+            { file: "memorial_card_20250823_110435.png", timestampJST: "2025-08-23 11:04:56" },
+            { file: "memorial_card_20250823_110544.png", timestampJST: "2025-08-23 11:07:34" },
+            { file: "memorial_card_20250823_110900.png", timestampJST: "2025-08-23 11:09:26" },
+            { file: "memorial_card_20250823_110951.png", timestampJST: "2025-08-23 11:11:49" },
+            { file: "memorial_card_20250823_111416.png", timestampJST: "2025-08-23 11:14:28" },
+            { file: "memorial_card_20250823_111458.png", timestampJST: "2025-08-23 11:16:17" },
+            { file: "memorial_card_20250823_111657.png", timestampJST: "2025-08-23 11:18:35" },
+            { file: "memorial_card_20250823_111926.png", timestampJST: "2025-08-23 11:21:23" },
+            { file: "memorial_card_20250823_112159.png", timestampJST: "2025-08-23 11:23:02" },
+            { file: "memorial_card_20250823_112330.png", timestampJST: "2025-08-23 11:25:11" },
+            { file: "memorial_card_20250823_112550.png", timestampJST: "2025-08-23 11:27:27" },
+            { file: "memorial_card_20250823_112858.png", timestampJST: "2025-08-23 11:30:33" },
+            { file: "memorial_card_20250823_113103.png", timestampJST: "2025-08-23 11:33:06" },
+            { file: "memorial_card_20250823_113357.png", timestampJST: "2025-08-23 11:34:37" },
+            { file: "memorial_card_20250823_113506.png", timestampJST: "2025-08-23 11:35:45" },
+            { file: "memorial_card_20250823_113615.png", timestampJST: "2025-08-23 11:38:12" },
+            { file: "memorial_card_20250823_113846.png", timestampJST: "2025-08-23 11:40:30" },
+            { file: "memorial_card_20250823_114103.png", timestampJST: "2025-08-23 11:41:16" },
+            { file: "memorial_card_20250823_114131.png", timestampJST: "2025-08-23 11:42:27" },
+            { file: "memorial_card_20250823_114322.png", timestampJST: "2025-08-23 11:45:14" },
+            { file: "memorial_card_20250823_114643.png", timestampJST: "2025-08-23 11:47:08" },
+            { file: "memorial_card_20250823_114734.png", timestampJST: "2025-08-23 11:49:26" },
+            { file: "memorial_card_20250823_115012.png", timestampJST: "2025-08-23 11:50:52" },
+            { file: "memorial_card_20250823_115214.png", timestampJST: "2025-08-23 11:53:17" },
+            { file: "memorial_card_20250823_115337.png", timestampJST: "2025-08-23 11:55:35" },
+            { file: "memorial_card_20250823_115606.png", timestampJST: "2025-08-23 11:58:05" },
+            { file: "memorial_card_20250823_115855.png", timestampJST: "2025-08-23 12:00:18" },
+            { file: "memorial_card_20250823_120153.png", timestampJST: "2025-08-23 12:03:52" },
+            { file: "memorial_card_20250823_120431.png", timestampJST: "2025-08-23 12:05:19" },
+            { file: "memorial_card_20250823_120601.png", timestampJST: "2025-08-23 12:07:11" },
+            { file: "memorial_card_20250823_120912.png", timestampJST: "2025-08-23 12:10:01" },
+            { file: "memorial_card_20250823_121459.png", timestampJST: "2025-08-23 12:15:57" },
+            { file: "memorial_card_20250823_121623.png", timestampJST: "2025-08-23 12:18:30" },
+            { file: "memorial_card_20250823_122128.png", timestampJST: "2025-08-23 12:23:25" },
+            { file: "memorial_card_20250823_122356.png", timestampJST: "2025-08-23 12:25:47" },
+            { file: "memorial_card_20250823_122610.png", timestampJST: "2025-08-23 12:28:09" },
+            { file: "memorial_card_20250823_122855.png", timestampJST: "2025-08-23 12:30:49" },
+            { file: "memorial_card_20250823_123128.png", timestampJST: "2025-08-23 12:32:31" },
+            { file: "memorial_card_20250823_123308.png", timestampJST: "2025-08-23 12:35:00" },
+            { file: "memorial_card_20250823_123528.png", timestampJST: "2025-08-23 12:36:32" },
+            { file: "memorial_card_20250823_123729.png", timestampJST: "2025-08-23 12:39:10" },
+            { file: "memorial_card_20250823_123956.png", timestampJST: "2025-08-23 12:41:02" },
+            { file: "memorial_card_20250823_124259.png", timestampJST: "2025-08-23 12:44:39" },
+            { file: "memorial_card_20250823_124520.png", timestampJST: "2025-08-23 12:45:38" },
+            { file: "memorial_card_20250823_124554.png", timestampJST: "2025-08-23 12:46:15" },
+            { file: "memorial_card_20250823_124800.png", timestampJST: "2025-08-23 12:48:40" },
+            { file: "memorial_card_20250823_124859.png", timestampJST: "2025-08-23 12:49:12" },
+            { file: "memorial_card_20250823_124923.png", timestampJST: "2025-08-23 12:50:06" },
+            { file: "memorial_card_20250823_125028.png", timestampJST: "2025-08-23 12:51:50" },
+            { file: "memorial_card_20250823_125234.png", timestampJST: "2025-08-23 12:54:00" },
+            { file: "memorial_card_20250823_125456.png", timestampJST: "2025-08-23 12:56:48" },
+            { file: "memorial_card_20250823_125750.png", timestampJST: "2025-08-23 12:59:36" },
+            { file: "memorial_card_20250823_130008.png", timestampJST: "2025-08-23 13:02:05" },
+            { file: "memorial_card_20250823_130812.png", timestampJST: "2025-08-23 13:09:08" },
+            { file: "memorial_card_20250823_131112.png", timestampJST: "2025-08-23 13:11:25" },
+            { file: "memorial_card_20250823_131132.png", timestampJST: "2025-08-23 13:12:09" },
+            { file: "memorial_card_20250823_131329.png", timestampJST: "2025-08-23 13:14:52" },
+            { file: "memorial_card_20250823_131546.png", timestampJST: "2025-08-23 13:17:02" },
+            { file: "memorial_card_20250823_131741.png", timestampJST: "2025-08-23 13:19:18" },
+            { file: "memorial_card_20250823_132120.png", timestampJST: "2025-08-23 13:22:57" },
+            { file: "memorial_card_20250823_132322.png", timestampJST: "2025-08-23 13:25:14" },
+            { file: "memorial_card_20250823_132547.png", timestampJST: "2025-08-23 13:26:33" },
+            { file: "memorial_card_20250823_132655.png", timestampJST: "2025-08-23 13:28:35" },
+            { file: "memorial_card_20250823_133023.png", timestampJST: "2025-08-23 13:32:00" },
+            { file: "memorial_card_20250823_133317.png", timestampJST: "2025-08-23 13:35:12" },
+            { file: "memorial_card_20250823_133545.png", timestampJST: "2025-08-23 13:37:35" },
+            { file: "memorial_card_20250823_133810.png", timestampJST: "2025-08-23 13:40:06" },
+            { file: "memorial_card_20250823_134042.png", timestampJST: "2025-08-23 13:41:40" },
+            { file: "memorial_card_20250823_134230.png", timestampJST: "2025-08-23 13:44:30" },
+            { file: "memorial_card_20250823_134653.png", timestampJST: "2025-08-23 13:48:48" },
+            { file: "memorial_card_20250823_135024.png", timestampJST: "2025-08-23 13:51:31" },
+            { file: "memorial_card_20250823_135157.png", timestampJST: "2025-08-23 13:52:27" },
+            { file: "memorial_card_20250823_135421.png", timestampJST: "2025-08-23 13:56:14" },
+            { file: "memorial_card_20250823_140206.png", timestampJST: "2025-08-23 14:03:19" },
+            { file: "memorial_card_20250823_140403.png", timestampJST: "2025-08-23 14:04:51" },
+            { file: "memorial_card_20250823_140527.png", timestampJST: "2025-08-23 14:06:58" },
+            { file: "memorial_card_20250823_140727.png", timestampJST: "2025-08-23 14:09:18" },
+            { file: "memorial_card_20250823_140940.png", timestampJST: "2025-08-23 14:11:15" },
+            { file: "memorial_card_20250823_141142.png", timestampJST: "2025-08-23 14:12:33" },
+            { file: "memorial_card_20250823_141343.png", timestampJST: "2025-08-23 14:15:04" },
+            { file: "memorial_card_20250823_141723.png", timestampJST: "2025-08-23 14:18:54" },
+            { file: "memorial_card_20250823_142004.png", timestampJST: "2025-08-23 14:21:58" },
+            { file: "memorial_card_20250823_142240.png", timestampJST: "2025-08-23 14:24:24" },
+            { file: "memorial_card_20250823_142449.png", timestampJST: "2025-08-23 14:26:40" },
+            { file: "memorial_card_20250823_142706.png", timestampJST: "2025-08-23 14:28:24" },
+            { file: "memorial_card_20250823_142858.png", timestampJST: "2025-08-23 14:30:43" },
+            { file: "memorial_card_20250823_143146.png", timestampJST: "2025-08-23 14:32:28" },
+            { file: "memorial_card_20250823_143308.png", timestampJST: "2025-08-23 14:33:34" },
+            { file: "memorial_card_20250823_143454.png", timestampJST: "2025-08-23 14:35:15" },
+            { file: "memorial_card_20250823_143629.png", timestampJST: "2025-08-23 14:37:35" },
+            { file: "memorial_card_20250823_143807.png", timestampJST: "2025-08-23 14:39:02" },
+            { file: "memorial_card_20250823_144156.png", timestampJST: "2025-08-23 14:42:44" },
+            { file: "memorial_card_20250823_144312.png", timestampJST: "2025-08-23 14:44:11" },
+            { file: "memorial_card_20250823_144703.png", timestampJST: "2025-08-23 14:48:33" },
+            { file: "memorial_card_20250823_144907.png", timestampJST: "2025-08-23 14:50:14" },
+            { file: "memorial_card_20250823_145042.png", timestampJST: "2025-08-23 14:52:43" },
+            { file: "memorial_card_20250823_145456.png", timestampJST: "2025-08-23 14:55:09" },
+            { file: "memorial_card_20250823_145558.png", timestampJST: "2025-08-23 14:57:24" },
+            { file: "memorial_card_20250823_145929.png", timestampJST: "2025-08-23 14:59:50" },
+            { file: "memorial_card_20250823_150005.png", timestampJST: "2025-08-23 15:01:39" },
+            { file: "memorial_card_20250823_150231.png", timestampJST: "2025-08-23 15:04:30" },
+            { file: "memorial_card_20250823_150507.png", timestampJST: "2025-08-23 15:07:12" },
+            { file: "memorial_card_20250823_150758.png", timestampJST: "2025-08-23 15:09:14" },
+            { file: "memorial_card_20250823_151002.png", timestampJST: "2025-08-23 15:11:03" },
+            { file: "memorial_card_20250823_151136.png", timestampJST: "2025-08-23 15:13:01" },
+            { file: "memorial_card_20250823_151313.png", timestampJST: "2025-08-23 15:15:14" },
+            { file: "memorial_card_20250823_151534.png", timestampJST: "2025-08-23 15:17:30" },
+            { file: "memorial_card_20250823_151759.png", timestampJST: "2025-08-23 15:19:05" },
+            { file: "memorial_card_20250823_151930.png", timestampJST: "2025-08-23 15:20:07" },
+            { file: "memorial_card_20250823_152039.png", timestampJST: "2025-08-23 15:22:07" },
+            { file: "memorial_card_20250823_152228.png", timestampJST: "2025-08-23 15:24:15" },
+            { file: "memorial_card_20250823_152439.png", timestampJST: "2025-08-23 15:26:43" },
+            { file: "memorial_card_20250823_152707.png", timestampJST: "2025-08-23 15:29:14" },
+            { file: "memorial_card_20250823_152936.png", timestampJST: "2025-08-23 15:31:34" },
+            { file: "memorial_card_20250823_153239.png", timestampJST: "2025-08-23 15:33:18" },
+            { file: "memorial_card_20250823_153402.png", timestampJST: "2025-08-23 15:35:31" },
+            { file: "memorial_card_20250823_153626.png", timestampJST: "2025-08-23 15:36:43" },
+            { file: "memorial_card_20250823_153700.png", timestampJST: "2025-08-23 15:37:21" },
+            { file: "memorial_card_20250823_153918.png", timestampJST: "2025-08-23 15:40:04" },
+            { file: "memorial_card_20250823_154050.png", timestampJST: "2025-08-23 15:41:29" },
+            { file: "memorial_card_20250823_154320.png", timestampJST: "2025-08-23 15:44:21" },
+            { file: "memorial_card_20250823_154507.png", timestampJST: "2025-08-23 15:47:03" },
+            { file: "memorial_card_20250823_154815.png", timestampJST: "2025-08-23 15:50:15" },
+            { file: "memorial_card_20250823_155041.png", timestampJST: "2025-08-23 15:51:14" },
+            { file: "memorial_card_20250823_155241.png", timestampJST: "2025-08-23 15:53:57" },
+            { file: "memorial_card_20250823_155419.png", timestampJST: "2025-08-23 15:55:16" },
+            { file: "memorial_card_20250823_155714.png", timestampJST: "2025-08-23 15:57:43" },
+            { file: "memorial_card_20250823_155900.png", timestampJST: "2025-08-23 16:00:05" }
+        ];
+
+        // グローバル変数
+        let currentDisplayMode = 'time';
+        let currentTimeFilter = 10;
+        let currentModalImage = '';
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                initializeGallery();
+            }, 500);
+        });
+
+        // ギャラリー初期化
+        function initializeGallery() {
+            const loading = document.querySelector('.loading');
+            const gallery = document.querySelector('.gallery-grid');
+            
+            loading.style.display = 'none';
+            gallery.style.display = 'grid';
+            
+            renderGallery();
+        }
+
+        // ギャラリー描画
+        function renderGallery() {
+            const gallery = document.querySelector('.gallery-grid');
+            const filteredImages = getFilteredImages();
+            
+            gallery.innerHTML = '';
+            
+            filteredImages.forEach((imageItem, index) => {
+                setTimeout(() => {
+                    const cardItem = createCardElement(imageItem);
+                    gallery.appendChild(cardItem);
+                    cardItem.classList.add('fade-in');
+                }, index * 50);
+            });
+        }
+
+        // フィルタリング済み画像取得
+        function getFilteredImages() {
+            if (currentDisplayMode === 'all') {
+                return imageData;
+            }
+            
+            return imageData.filter(imageItem => {
+                // timestampJSTが利用可能な場合はそれを優先
+                if (imageItem.timestampJST) {
+                    const timeMatch = imageItem.timestampJST.match(/\d{4}-\d{2}-\d{2} (\d{2}):/);
+                    if (timeMatch) {
+                        const hour = parseInt(timeMatch[1]);
+                        return hour === currentTimeFilter;
+                    }
+                }
+                
+                // フォールバック: ファイル名から時刻を取得
+                const timeMatch = imageItem.file.match(/memorial_card_20250823_(\d{2})/);
+                if (timeMatch) {
+                    const hour = parseInt(timeMatch[1]);
+                    return hour === currentTimeFilter;
+                }
+                
+                return false;
+            });
+        }
+
+        // カード要素作成
+        function createCardElement(imageItem) {
+            const cardItem = document.createElement('div');
+            cardItem.className = 'card-item';
+            cardItem.onclick = () => openModal(imageItem.file);
+            
+            const img = document.createElement('img');
+            img.src = `card_images/${imageItem.file}`;
+            img.alt = 'メモリアルカード';
+            img.loading = 'lazy';
+            
+            cardItem.appendChild(img);
+            return cardItem;
+        }
+
+        // メニュートグル
+        function toggleMenu() {
+            const hamburger = document.querySelector('.hamburger');
+            const sideMenu = document.querySelector('.side-menu');
+            const overlay = document.querySelector('.overlay');
+            
+            hamburger.classList.toggle('active');
+            sideMenu.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+
+        // 表示モード設定
+        function setDisplayMode(mode) {
+            currentDisplayMode = mode;
+            
+            // メニューボタンの状態更新
+            document.querySelectorAll('.menu-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // フィルター部の表示/非表示
+            const filterSection = document.querySelector('.filter-section');
+            if (mode === 'time') {
+                filterSection.classList.add('active');
+            } else {
+                filterSection.classList.remove('active');
+            }
+            
+            toggleMenu();
+            renderGallery();
+        }
+
+        // 時間フィルター
+        function filterByTime(hour) {
+            currentTimeFilter = hour;
+            
+            // ボタンの状態更新
+            document.querySelectorAll('.time-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderGallery();
+        }
+
+        // モーダル開く（ポケモンカード風3D演出）
+        function openModal(imageName) {
+            const modal = document.getElementById('cardModal');
+            const card = modal.querySelector('.card');
+            const body = document.body;
+            
+            currentModalImage = imageName;
+            
+            // 画像パスを設定
+            const imageUrl = `url(card_images/${imageName})`;
+            card.style.setProperty('--img', imageUrl);
+            
+            // スクロール無効化（スクロールバー幅を維持）
+            const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+            body.style.overflow = 'hidden';
+            body.style.paddingRight = `${scrollbarWidth}px`;
+            body.classList.add('modal-open');
+            
+            // モーダル表示
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+            
+            // アニメーション開始（二度のrequestAnimationFrameで確実に）
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    card.classList.remove('is-new'); // 一旦削除
+                    card.classList.add('is-new'); // 再追加でアニメーション発火
+                    
+                    // ダウンロードボタンを隠す
+                    const downloadBtn = modal.querySelector('.download-button');
+                    downloadBtn.classList.remove('show');
+                    
+                    // 1.6秒後（アニメーション終了後）にボタン表示
+                    setTimeout(() => {
+                        downloadBtn.classList.add('show');
+                    }, 1600);
+                });
+            });
+            
+            // フォーカス管理は不要（×ボタンなし）
+        }
+
+        // モーダル閉じる
+        function closeModal() {
+            const modal = document.getElementById('cardModal');
+            const card = modal.querySelector('.card');
+            const downloadBtn = modal.querySelector('.download-button');
+            const body = document.body;
+            
+            // アニメーションクラス削除
+            card.classList.remove('is-new');
+            
+            // ダウンロードボタンを隠す
+            downloadBtn.classList.remove('show');
+            
+            // モーダル非表示
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+            
+            // スクロール有効化
+            body.style.overflow = '';
+            body.style.paddingRight = '';
+            body.classList.remove('modal-open');
+        }
+
+        // 画像ダウンロード
+        function downloadImage() {
+            // ローカル環境でのダウンロード対応
+            const link = document.createElement('a');
+            link.href = `card_images/${currentModalImage}`;
+            link.download = currentModalImage;
+            link.setAttribute('target', '_blank');
+            
+            // 強制的にダウンロードを試行
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // ユーザーへの案内メッセージ
+            setTimeout(() => {
+                const shouldShowTip = !localStorage.getItem('downloadTipShown');
+                if (shouldShowTip) {
+                    alert('💡 ダウンロードが開始されない場合は、開いた画像を右クリック→「名前を付けて保存」してください。');
+                    localStorage.setItem('downloadTipShown', 'true');
+                }
+            }, 500);
+        }
+
+        // イベントリスナー設定
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('cardModal');
+            const modalBackdrop = modal.querySelector('.modal-backdrop');
+            
+            // 背景クリックで閉じる
+            modalBackdrop.addEventListener('click', closeModal);
+            
+            // ESCキーで閉じる
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    if (modal.classList.contains('is-open')) {
+                        closeModal();
+                    } else if (document.querySelector('.side-menu').classList.contains('active')) {
+                        toggleMenu();
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
