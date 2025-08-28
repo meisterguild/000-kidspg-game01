@@ -46,3 +46,7 @@ yarn-error.log*
 .claude/
 results/
 results*/
+docs/memorial_site_src/card_images/*
+docs/memorial_site_src/card_images.zip
+docs/memorial_site_src/split/card_images/*
+docs/memorial_site_src/split/card_images.zip
